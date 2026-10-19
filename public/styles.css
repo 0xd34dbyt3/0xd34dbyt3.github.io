@@ -520,6 +520,15 @@ img {
 
 .about-section {
     width: 100%;
+    container-type: inline-size;
+}
+
+/* Size the animated heading against its actual column so scramble glyphs
+   cannot push the name onto a different line at desktop or mobile widths. */
+.about-section #nameTitle {
+    white-space: nowrap;
+    font-size: clamp(0.75rem, 6.5cqi, 3.25rem);
+    letter-spacing: -0.03em;
 }
 
 .about-section .name-title {
@@ -860,6 +869,10 @@ img {
         max-width: 100%;
     }
 
+    .about-section #nameTitle {
+        font-size: clamp(0.75rem, 6.5cqi, 2.25rem);
+    }
+
     .meta-row {
         grid-template-columns: 90px 1fr;
     }
@@ -936,6 +949,12 @@ img {
 
     .footer-separator {
         display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .about-section #nameTitle {
+        font-size: clamp(0.75rem, 6.5cqi, 1.3rem);
     }
 }
 
