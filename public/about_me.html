@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About — 0xDEADBYTE</title>
+    <meta name="description" content="About Muhammed Fatih Öztürk — Security Researcher, Red Teamer and Developer.">
+    <link rel="stylesheet" href="styles.css?v=4">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        .meta-row {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            align-items: baseline;
+            gap: 0.75rem;
+            padding: 0.55rem 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+        }
+        .meta-row:last-child { border-bottom: none; }
+        .meta-label {
+            font-weight: 700;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+        .meta-val {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            word-break: break-word;
+            text-align: right;
+        }
+        .profile-name {
+            font-weight: 700;
+            color: var(--accent-color);
+            font-size: 1.1rem;
+            padding-bottom: 0.6rem;
+            margin-bottom: 0.4rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <a href="index.html" class="logo-text glitch-text" id="logoText">0xDEADBYTE</a>
+            </div>
+            <nav class="nav-menu">
+                <a href="about_me.html" class="nav-link">./about.me</a>
+                <a href="projects.html" class="nav-link">./projects.exe</a>
+                <a href="blog.html"     class="nav-link">./blog.txt</a>
+                <div class="social-links">
+                    <a href="https://github.com/ParanoidNull" target="_blank" rel="noopener noreferrer" class="github-link" aria-label="GitHub">
+                        <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                    </a>
+                    <a href="https://linkedin.com/in/muhammedfatihöztürk" target="_blank" rel="noopener noreferrer" class="linkedin-link" aria-label="LinkedIn">
+                        <svg class="linkedin-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4.98 3.5C4.98 4.88 3.88 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.32 8.02h4.36V24H.32V8.02zM8.34 8.02h4.18v2.17h.06c.58-1.1 2-2.26 4.12-2.26 4.4 0 5.21 2.9 5.21 6.68V24h-4.36v-8.1c0-1.93-.04-4.41-2.69-4.41-2.69 0-3.1 2.1-3.1 4.27V24H8.34V8.02z"/>
+                        </svg>
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main About Content -->
+    <main class="main-content">
+        <div class="about-layout">
+            <section class="about-section">
+                <h1 class="name-title glitch-text" id="nameTitle">Muhammed_Fatih_Öztürk</h1>
+                <p class="subtitle">Security Researcher and Developer</p>
+
+                <div class="about-content">
+                    <!-- WHOAMI -->
+                    <div class="section about-whoami">
+                        <div class="section-title"><span class="dot">›</span> WHOAMI</div>
+                        <p id="whoamiText" style="color:var(--text-secondary); white-space:pre-wrap; line-height:1.7; font-size:0.95rem;"></p>
+                    </div>
+
+                    <!-- EDUCATION LOG -->
+                    <div class="section" style="margin-top:1.5rem;">
+                        <div class="section-title"><span class="dot">⚑</span> EDUCATION_LOG</div>
+                        <div id="educationList"></div>
+                    </div>
+
+                    <!-- WORK EXPERIENCE -->
+                    <div class="section" style="margin-top:1.5rem;">
+                        <div class="section-title"><span class="dot">›</span> WORK_EXPERIENCE</div>
+                        <div id="workList"></div>
+                    </div>
+
+                    <!-- SKILL MATRIX -->
+                    <div class="section" style="margin-top:1.5rem;">
+                        <div class="section-title"><span class="dot">☉</span> SKILL_MATRIX</div>
+                        <div id="skillGrid" class="skill-grid"></div>
+                    </div>
+
+                    <!-- CERT CHAIN -->
+                    <div class="section" style="margin-top:1.5rem;">
+                        <div class="section-title"><span class="dot">›</span> CERT_CHAIN</div>
+                        <div id="certList" class="cert-list"></div>
+                    </div>
+                </div>
+
+                <p style="margin-top:2rem;">
+                    <a href="index.html" class="nav-link">./home</a>
+                </p>
+            </section>
+
+            <!-- Profile Sidebar Card -->
+            <aside class="profile-card">
+                <img id="profileImage" src="assets/user-icon.png" alt="Profile" class="profile-image">
+                <div class="profile-meta">
+                    <div id="profileName" class="profile-name">Muhammed Fatih Öztürk</div>
+                    <div class="meta-row">
+                        <span class="meta-label">ROLE</span>
+                        <span id="profileRole" class="meta-val">Security Researcher & Developer</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">LOCATION</span>
+                        <span id="profileLoc" class="meta-val">Sivas, TR</span>
+                    </div>
+                    <div class="meta-row" style="flex-direction:column; align-items:flex-start; gap:0.4rem;">
+                        <span class="meta-label">CORE_FOCUS</span>
+                        <div id="profileFocus" class="core-focus" style="margin-top:0.2rem;"></div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-text">
+                <span>Discipline is Good, But Obsession Makes You Great</span>
+                <span class="footer-separator">|</span>
+                <span>Secure_Connection_Established</span>
+            </div>
+            <div class="footer-copyright">© 2026 Muhammed_Fatih_Öztürk</div>
+        </div>
+    </footer>
+
+    <script type="module" src="script.js?v=4"></script>
+
+    <script type="module">
+    import DataManager from './js/data-manager.js';
+
+    const FALLBACK = {
+        whoami: "I approach cybersecurity not from a defensive starting point, but from the attacker's perspective. I am a Red Team and AI Security–focused researcher who prioritizes understanding how systems break before deciding how to protect them. Real security only exists when systems are tested with an adversarial mindset.\n\nMy work focuses on AI Red Teaming, reverse engineering, malware development, attack techniques, and threat simulation. I analyze assumptions, expose blind spots, and challenge false senses of security.",
+        education: [
+            { institution: 'Sivas Cumhuriyet University', detail: 'Management Information Systems — Sivas, TR' }
+        ],
+        work: [
+            { title: 'Security Researcher & Red Teamer', company: 'Independent Research & AI Security', duration: '2024 - Present', desc: 'Focusing on AI Red Teaming, vulnerability research, exploit PoCs, and adversarial security testing.' }
+        ],
+        skills: {
+            'Security Ops': ['Appsec (DAST/SAST)', 'Network Security', 'Digital Forensics', 'Malware Analysis', 'Burp Suite'],
+            'Artificial Intel': ['LLM Integration', 'NLP', 'Neural Networks', 'Computer Vision'],
+            'Syntax / Langs': ['Python', 'C#', 'Bash', 'Rust'],
+            'Frameworks': ['React', 'Node.js', 'TensorFlow', 'PyTorch']
+        },
+        certs: [
+            { title: 'CS50 Series', desc: "Completed Harvard's CS50 series focusing on fundamentals of computer science." },
+            { title: 'ISO Standards', desc: "Familiar with ISO/IEC 27001 framework and controls." },
+            { title: 'Vendor Certs', desc: "Vendor-specific certs and training (ongoing)." }
+        ],
+        profile: {
+            name: 'Muhammed Fatih Öztürk',
+            location: 'Sivas, TR',
+            role: 'Security Researcher & Developer',
+            core_focus: ['Security', 'AI', 'Development'],
+            image: 'assets/user-icon.png'
+        }
+    };
+
+    function extractText(val) {
+        if (!val) return '';
+        if (typeof val === 'string') return val;
+        if (typeof val === 'object') return val.tr || val.en || '';
+        return String(val);
+    }
+
+    function renderAbout(data) {
+        const whoami   = extractText(data.whoami)   || FALLBACK.whoami;
+        const education= data.education?.length ? data.education : FALLBACK.education;
+        const work     = data.work?.length ? data.work : FALLBACK.work;
+        const skills   = Object.keys(data.skills || {}).length ? data.skills : FALLBACK.skills;
+        const certs    = data.certs?.length ? data.certs : FALLBACK.certs;
+        const profile  = (data.profile?.name) ? data.profile : FALLBACK.profile;
+
+        document.getElementById('whoamiText').textContent = whoami;
+
+        // Education
+        const eduList = document.getElementById('educationList');
+        eduList.replaceChildren();
+        education.forEach(edu => {
+            const div = document.createElement('div');
+            div.className = 'education-entry';
+            const strong = document.createElement('strong');
+            strong.style.color = 'var(--accent-color)';
+            strong.textContent = extractText(edu.institution);
+            const detail = document.createElement('div');
+            detail.style.color = 'var(--text-secondary)';
+            detail.style.fontSize = '0.95rem';
+            detail.style.marginTop = '0.2rem';
+            detail.textContent = extractText(edu.detail);
+            div.appendChild(strong);
+            div.appendChild(detail);
+            eduList.appendChild(div);
+        });
+
+        // Work Experience
+        const workList = document.getElementById('workList');
+        workList.replaceChildren();
+        work.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'education-entry';
+
+            // 1. Job Title
+            const titleEl = document.createElement('div');
+            titleEl.style.cssText = 'font-weight:700;color:var(--accent-color);font-size:1.05rem;';
+            titleEl.textContent = extractText(item.title);
+
+            // 2. Company & Date Badge Row (side-by-side under title)
+            const metaRow = document.createElement('div');
+            metaRow.style.cssText = 'display:flex;align-items:center;gap:0.6rem;margin-top:0.35rem;flex-wrap:wrap;';
+
+            const companyEl = document.createElement('span');
+            companyEl.style.cssText = 'color:var(--text-secondary);font-size:0.9rem;font-weight:500;';
+            companyEl.textContent = extractText(item.company);
+
+            const badgeEl = document.createElement('span');
+            badgeEl.style.cssText = 'font-size:0.72rem;color:#27c93f;background:rgba(39,201,63,0.1);border:1px solid rgba(39,201,63,0.35);padding:0.12rem 0.5rem;border-radius:4px;font-weight:600;display:inline-block;';
+            badgeEl.textContent = extractText(item.duration) || 'PRESENT';
+
+            metaRow.appendChild(companyEl);
+            metaRow.appendChild(badgeEl);
+
+            div.appendChild(titleEl);
+            div.appendChild(metaRow);
+
+            // 3. Description (under company name)
+            if (item.desc) {
+                const descDiv = document.createElement('div');
+                descDiv.style.cssText = 'color:var(--text-muted);font-size:0.88rem;margin-top:0.45rem;line-height:1.5;';
+                descDiv.textContent = extractText(item.desc);
+                div.appendChild(descDiv);
+            }
+
+            workList.appendChild(div);
+        });
+
+        // Skills
+        const skillGrid = document.getElementById('skillGrid');
+        skillGrid.replaceChildren();
+        for (const [catKey, items] of Object.entries(skills)) {
+            let catName = catKey;
+            try {
+                const parsed = JSON.parse(catKey);
+                if (typeof parsed === 'object') catName = parsed.tr || parsed.en || catKey;
+            } catch(e){}
+
+            const box = document.createElement('div');
+            box.className = 'skill-box';
+            const strong = document.createElement('strong');
+            strong.style.color = 'var(--accent-color)';
+            strong.textContent = catName;
+            const chips = document.createElement('div');
+            chips.style.marginTop = '0.6rem';
+            if (Array.isArray(items)) items.forEach(s => {
+                const chip = document.createElement('span');
+                chip.className = 'chip';
+                chip.textContent = extractText(s);
+                chips.appendChild(chip);
+            });
+            box.appendChild(strong);
+            box.appendChild(chips);
+            skillGrid.appendChild(box);
+        }
+
+        // Certs
+        const certList = document.getElementById('certList');
+        certList.replaceChildren();
+        certs.forEach(cert => {
+            const details = document.createElement('details');
+            const summary = document.createElement('summary');
+            summary.style.color = 'var(--text-muted)';
+            summary.textContent = extractText(cert.title);
+            const p = document.createElement('p');
+            p.style.color = 'var(--text-secondary)';
+            p.style.marginTop = '0.5rem';
+            p.textContent = extractText(cert.desc);
+            details.appendChild(summary);
+            details.appendChild(p);
+            certList.appendChild(details);
+        });
+
+        // Profile card
+        if (profile.image) document.getElementById('profileImage').src = profile.image;
+        document.getElementById('profileName').textContent = extractText(profile.name) || 'Muhammed Fatih Öztürk';
+        document.getElementById('profileLoc').textContent  = extractText(profile.location) || 'Sivas, TR';
+        document.getElementById('profileRole').textContent = extractText(profile.role) || 'Security Researcher & Developer';
+        
+        const focusEl = document.getElementById('profileFocus');
+        focusEl.replaceChildren();
+        (profile.core_focus || ['Security', 'AI', 'Development']).forEach(item => {
+            const span = document.createElement('span');
+            span.className = 'chip';
+            span.textContent = extractText(item);
+            focusEl.appendChild(span);
+        });
+    }
+
+    async function loadAbout() {
+        const data = await DataManager.getAboutData();
+        renderAbout(data);
+        window.dispatchEvent(new Event('contentUpdated'));
+    }
+
+    loadAbout();
+    </script>
+</body>
+</html>

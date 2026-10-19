@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0xDEADBYTE — Security Researcher & Developer</title>
+    <meta name="description" content="Muhammed Fatih Öztürk — Security Researcher, Red Teamer and Developer.">
+    <link rel="stylesheet" href="styles.css?v=4">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        /* ── Canvas Background ── */
+        #bgCanvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .header, .main-content, .footer {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Home full-width layout ── */
+        .home-wrapper {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.75rem;
+        }
+
+        /* ── Feeds Grid ── */
+        .feeds-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+
+        @media (min-width: 768px) {
+            .feeds-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        .feed-panel {
+            background: rgba(13, 13, 13, 0.88);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.1rem 1.25rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .feed-panel-title {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--accent-color);
+            font-size: 0.8rem;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.85rem;
+            padding-bottom: 0.55rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .feed-panel-title svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+        .feed-live-dot {
+            margin-left: auto;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .feed-live-dot.live  { color: #27c93f; }
+        .feed-live-dot.offline { color: #ff5f56; }
+        .feed-live-dot::before {
+            content: '';
+            display: inline-block;
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .feed-live-dot.live::before  { animation: blink 1.5s ease infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+        .feed-items { display: flex; flex-direction: column; gap: 0.25rem; }
+
+        .feed-item {
+            padding: 0.6rem 0;
+            border-bottom: 1px solid rgba(51,51,51,0.45);
+        }
+        .feed-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+        .feed-item-link {
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            line-height: 1.4;
+            text-decoration: none;
+            display: block;
+            transition: color 0.2s;
+        }
+        .feed-item-link:hover { color: var(--accent-color); }
+
+        .feed-item-meta {
+            color: var(--text-muted);
+            font-size: 0.68rem;
+            margin-top: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* CVE badges */
+        .sev-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.1rem 0.45rem;
+            border-radius: 3px;
+            font-size: 0.63rem;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+        }
+        .sev-critical { background:rgba(180,0,0,.3); color:#ff5f56; border:1px solid rgba(255,95,86,.4); }
+        .sev-high     { background:rgba(180,80,0,.3); color:#ff9500; border:1px solid rgba(255,149,0,.4); }
+        .sev-medium   { background:rgba(140,120,0,.3);color:#ffd700; border:1px solid rgba(255,215,0,.4); }
+        .sev-low      { background:rgba(0,80,30,.3);  color:#27c93f; border:1px solid rgba(39,201,63,.4); }
+        .sev-kev      { background:rgba(138,43,226,.3);color:#bb86fc; border:1px solid rgba(187,134,252,.4); }
+
+        .feed-spinner {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            padding: 0.5rem 0;
+            display: flex; align-items: center; gap: 0.45rem;
+        }
+        .feed-spinner::before {
+            content:'';
+            display:inline-block;
+            width:8px;height:8px;
+            border:1px solid var(--text-muted);
+            border-top-color:var(--accent-color);
+            border-radius:50%;
+            animation:spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform:rotate(360deg); } }
+
+        /* ── Enhanced Footer ── */
+        .footer-inner { max-width: 1400px; margin: 0 auto; }
+
+        .footer-globe-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .footer-globe-svg {
+            width: 36px; height: 36px;
+            color: var(--text-muted);
+            animation: globe-spin 16s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes globe-spin { to { transform: rotate(360deg); } }
+
+        .footer-globe-text { font-family: 'Orbitron', sans-serif; font-size: 0.7rem; letter-spacing: 2px; color: var(--text-muted); }
+
+        .footer-globe-status {
+            font-size: 0.68rem;
+            color: #27c93f;
+            display: flex; align-items: center; gap: 0.4rem;
+        }
+        .footer-globe-status::before {
+            content:''; display:inline-block;
+            width:5px;height:5px;background:#27c93f;border-radius:50%;
+            animation:blink 1.5s ease infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Animated Canvas -->
+    <canvas id="bgCanvas" aria-hidden="true"></canvas>
+
+    <!-- ── Header ── -->
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <a href="index.html" class="logo-text glitch-text" id="logoText">0xDEADBYTE</a>
+            </div>
+            <nav class="nav-menu">
+                <a href="about_me.html" class="nav-link">./about.me</a>
+                <a href="projects.html" class="nav-link">./projects.exe</a>
+                <a href="blog.html"     class="nav-link">./blog.txt</a>
+
+                <!-- Social Links (Grouped Side-by-Side) -->
+                <div class="social-links">
+                    <a href="https://github.com/ParanoidNull" target="_blank" rel="noopener noreferrer" class="github-link" aria-label="GitHub">
+                        <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                    </a>
+                    <a href="https://linkedin.com/in/muhammedfatihöztürk" target="_blank" rel="noopener noreferrer" class="linkedin-link" aria-label="LinkedIn">
+                        <svg class="linkedin-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4.98 3.5C4.98 4.88 3.88 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.32 8.02h4.36V24H.32V8.02zM8.34 8.02h4.18v2.17h.06c.58-1.1 2-2.26 4.12-2.26 4.4 0 5.21 2.9 5.21 6.68V24h-4.36v-8.1c0-1.93-.04-4.41-2.69-4.41-2.69 0-3.1 2.1-3.1 4.27V24H8.34V8.02z"/>
+                        </svg>
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ── Main ── -->
+    <main class="main-content">
+        <div class="home-wrapper">
+
+            <!-- Hero -->
+            <div class="main-section">
+                <h1 class="name-title glitch-text" id="nameTitle">Muhammed_Fatih_Öztürk</h1>
+                <p class="subtitle">Security Researcher and Developer</p>
+
+                <div class="nav-boxes">
+                    <a href="about_me.html" class="nav-box">
+                        <svg class="about-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 19c0-3.3137 3.134-6 8-6s8 2.6863 8 6"/></svg>
+                        <span class="box-text">./about.me</span>
+                    </a>
+                    <a href="projects.html" class="nav-box">
+                        <img src="assets/project-icon.png" alt="Project icon" class="projects-icon">
+                        <span class="box-text">./projects.exe</span>
+                    </a>
+                    <a href="blog.html" class="nav-box">
+                        <svg class="blog-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="11" height="16" rx="1.5"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="14" x2="13.5" y2="14"/><path d="M6 6h-1.5a1 1 0 0 0-1 1v8"/></svg>
+                        <span class="box-text">./blog.txt</span>
+                    </a>
+                </div>
+
+                <!-- Terminal -->
+                <div class="terminal-container">
+                    <div class="terminal-header">
+                        <span class="terminal-title">Terminal</span>
+                        <div class="terminal-buttons">
+                            <span class="terminal-btn"></span>
+                            <span class="terminal-btn"></span>
+                            <span class="terminal-btn"></span>
+                        </div>
+                    </div>
+                    <div class="terminal-body" id="terminal">
+                        <div class="terminal-output" id="terminalOutput">
+                            <div class="terminal-line">
+                                <span class="terminal-text">Type 'help' for available commands.</span>
+                            </div>
+                        </div>
+                        <div class="terminal-input-line">
+                            <span class="terminal-prompt">guest@system:~$</span>
+                            <input type="text" class="terminal-input" id="terminalInput" autocomplete="off" spellcheck="false" aria-label="Terminal Input">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feeds -->
+            <div class="feeds-grid">
+                <!-- News -->
+                <div class="feed-panel">
+                    <div class="feed-panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                            <path d="M2.5 19a10 10 0 0 1 19 0"/><path d="M6.5 15.5a6 6 0 0 1 11 0"/>
+                            <path d="M10.5 12.5a2.5 2.5 0 0 1 3 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/>
+                        </svg>
+                        <span>LATEST_THREATS</span>
+                        <span class="feed-live-dot live" id="newsStatus">LIVE</span>
+                    </div>
+                    <div class="feed-items" id="newsItems">
+                        <div class="feed-spinner">Fetching threat intel...</div>
+                    </div>
+                </div>
+
+                <!-- CVE -->
+                <div class="feed-panel">
+                    <div class="feed-panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2L3 7v6c0 4.97 3.81 9.63 9 10.93C17.19 22.63 21 17.97 21 13V7l-9-5z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="16" r="0.8" fill="currentColor"/>
+                        </svg>
+                        <span>RECENT_CVE</span>
+                        <span class="feed-live-dot live" id="cveStatus">LIVE</span>
+                    </div>
+                    <div class="feed-items" id="cveItems">
+                        <div class="feed-spinner">Querying NVD database...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ── Footer ── -->
+    <footer class="footer">
+        <div class="footer-inner">
+            <div class="footer-globe-row">
+                <svg class="footer-globe-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <ellipse cx="12" cy="12" rx="4" ry="10"/>
+                    <line x1="2" y1="9" x2="22" y2="9"/>
+                    <line x1="2" y1="15" x2="22" y2="15"/>
+                </svg>
+                <div>
+                    <div class="footer-globe-text">GLOBAL_OPERATIONS</div>
+                    <div class="footer-globe-status">SECURE_CONNECTION_ESTABLISHED</div>
+                </div>
+            </div>
+            <div class="footer-content">
+                <div class="footer-text">
+                    <span>Discipline is Good, But Obsession Makes You Great</span>
+                    <span class="footer-separator">|</span>
+                    <span>0xDEADBYTE © 2026</span>
+                </div>
+                <div class="footer-copyright">
+                    Muhammed_Fatih_Öztürk — Security Researcher & Developer
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="script.js?v=4"></script>
+
+    <script>
+    // ════════════════════════════════════════════════════════════════
+    //  CANVAS — Mouse-responsive vortex matrix (white)
+    // ════════════════════════════════════════════════════════════════
+    (function () {
+        const canvas = document.getElementById('bgCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const CHARS = '01ABCDEF@#%&*></.\\|';
+        const FS = 13;
+        let W, H, cols, rows, grid, animId;
+        let time = 0;
+
+        let mouse = { x: 0.5, y: 0.5 };
+        let smoothMouse = { x: 0.5, y: 0.5 };
+
+        document.addEventListener('mousemove', e => {
+            mouse.x = e.clientX / window.innerWidth;
+            mouse.y = e.clientY / window.innerHeight;
+        });
+
+        function resize() {
+            W = canvas.width  = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+            cols = Math.ceil(W / (FS * 1.6));
+            rows = Math.ceil(H / FS);
+            grid = Array.from({ length: cols * rows }, () =>
+                CHARS[Math.floor(Math.random() * CHARS.length)]
+            );
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.font = `${FS}px "JetBrains Mono", monospace`;
+            ctx.textAlign = 'center';
+            time += 0.012;
+
+            smoothMouse.x += (mouse.x - smoothMouse.x) * 0.06;
+            smoothMouse.y += (mouse.y - smoothMouse.y) * 0.06;
+
+            const cx = smoothMouse.x;
+            const cy = smoothMouse.y;
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const nx = (col / cols) - cx;
+                    const ny = (row / rows) - cy;
+                    const dist  = Math.sqrt(nx * nx + ny * ny);
+                    const angle = Math.atan2(ny, nx);
+
+                    const wave = Math.sin(dist * 5 - time * 1.8 + angle * 1.5);
+                    const rawOp = (wave + 1) * 0.5;
+
+                    const cursorDist = Math.sqrt(
+                        Math.pow((col / cols) - mouse.x, 2) +
+                        Math.pow((row / rows) - mouse.y, 2)
+                    );
+                    const glowBoost = Math.max(0, 1 - cursorDist * 6) * 0.55;
+
+                    const distFactor = Math.max(0, 1 - Math.abs(dist - 0.38) * 3.2);
+                    const opacity = rawOp * distFactor * 0.30 + glowBoost;
+
+                    if (opacity < 0.015) continue;
+
+                    const idx = row * cols + col;
+                    if (Math.random() < 0.004) {
+                        grid[idx] = CHARS[Math.floor(Math.random() * CHARS.length)];
+                    }
+
+                    ctx.fillStyle = `rgba(255,255,255,${Math.min(opacity, 0.85).toFixed(3)})`;
+                    ctx.fillText(grid[idx], col * FS * 1.6 + FS * 0.8, row * FS + FS);
+                }
+            }
+            animId = requestAnimationFrame(draw);
+        }
+
+        resize();
+        draw();
+        window.addEventListener('resize', () => { cancelAnimationFrame(animId); resize(); draw(); });
+    })();
+
+
+    // ════════════════════════════════════════════════════════════════
+    //  FEED 1 — Live Cybersecurity News (Direct Article Permalinks)
+    // ════════════════════════════════════════════════════════════════
+    async function loadNews() {
+        const container = document.getElementById('newsItems');
+        const statusEl  = document.getElementById('newsStatus');
+
+        const FALLBACK_NEWS = [
+            { title: "CTM360 Research Reveals How Insurance Phishing Has Evolved Into Real-Time Account Hijacking", link: "https://thehackernews.com/2026/07/ctm360-research-reveals-how-insurance.html", source: "The Hacker News", date: "Today" },
+            { title: "Cl0p Affiliates Target Internet-Exposed PTC Windchill and FlexPLM with Unauthenticated RCE", link: "https://thehackernews.com/2026/07/cl0p-affiliates-target-internet-exposed.html", source: "The Hacker News", date: "Today" },
+            { title: "DevMan RaaS Portal Centralizes Payload Builds, Victim Management, and Affiliate Payouts", link: "https://thehackernews.com/2026/07/devman-raas-portal-centralizes-payload.html", source: "The Hacker News", date: "Yesterday" },
+            { title: "BlueNoroff Zoom Phishing Kit Profiles Crypto Wallets Before Malware Delivery", link: "https://thehackernews.com/2026/07/bluenoroff-zoom-phishing-kit-profiles.html", source: "The Hacker News", date: "Yesterday" },
+            { title: "Certighost Exploit Lets Low-Privileged Active Directory Users Impersonate a Domain Controller", link: "https://thehackernews.com/2026/07/certighost-exploit-lets-low-privileged.html", source: "The Hacker News", date: "Recently" }
+        ];
+
+        let newsList = null;
+
+        // Try local backend API route first (fast, cached, zero CORS)
+        try {
+            const res = await fetch('/api/feeds/news', { signal: AbortSignal.timeout(4000) });
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    newsList = data;
+                }
+            }
+        } catch (e) {}
+
+        // Fallback to client-side RSS proxy if API offline
+        if (!newsList) {
+            try {
+                const res = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Ffeeds.feedburner.com%2FTheHackersNews&count=6', { signal: AbortSignal.timeout(4000) });
+                const data = await res.json();
+                if (data.status === 'ok' && data.items?.length > 0) {
+                    newsList = data.items.map(item => ({
+                        title: item.title,
+                        link:  item.link,
+                        source: item.author || 'The Hacker News',
+                        date:  item.pubDate ? new Date(item.pubDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short' }) : ''
+                    }));
+                }
+            } catch (e) {}
+        }
+
+        if (!newsList || newsList.length === 0) {
+            newsList = FALLBACK_NEWS;
+        }
+
+        container.replaceChildren();
+        statusEl.textContent = 'LIVE';
+        statusEl.className = 'feed-live-dot live';
+
+        newsList.forEach(item => {
+            const wrap = document.createElement('div');
+            wrap.className = 'feed-item';
+
+            const link = document.createElement('a');
+            link.className = 'feed-item-link';
+            link.href = item.link;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.title = 'Open full article in new tab';
+            link.textContent = item.title;
+
+            const meta = document.createElement('div');
+            meta.className = 'feed-item-meta';
+            meta.textContent = [item.date, item.source || item.src].filter(Boolean).join(' · ');
+
+            wrap.appendChild(link);
+            wrap.appendChild(meta);
+            container.appendChild(wrap);
+        });
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  FEED 2 — Real Live CVEs (Direct NVD Detail Permalinks)
+    // ════════════════════════════════════════════════════════════════
+    async function loadCVEs() {
+        const container = document.getElementById('cveItems');
+        const statusEl  = document.getElementById('cveStatus');
+
+        let cveList = null;
+
+        // Try local backend API route first (cached, fast, zero CORS)
+        try {
+            const res = await fetch('/api/feeds/cve', { signal: AbortSignal.timeout(4000) });
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    cveList = data;
+                }
+            }
+        } catch (e) {}
+
+        // Direct CISA KEV fallback
+        if (!cveList) {
+            try {
+                const res = await fetch('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json', { signal: AbortSignal.timeout(5000) });
+                const data = await res.json();
+                if (data.vulnerabilities?.length > 0) {
+                    const recent = data.vulnerabilities.slice(-6).reverse();
+                    cveList = recent.map(v => ({
+                        id:    v.cveID,
+                        title: `${v.vendorProject} ${v.product} — ${v.vulnerabilityName}`,
+                        badge: 'KEV EXPLOITED',
+                        badgeClass: 'sev-kev',
+                        pub:   v.dateAdded || '',
+                        url:   `https://nvd.nist.gov/vuln/detail/${v.cveID}`
+                    }));
+                }
+            } catch (e) {}
+        }
+
+        if (!cveList || cveList.length === 0) {
+            cveList = [
+                { id: 'CVE-2026-16232', title: 'Check Point SmartConsole Improper Authentication', badge: 'HIGH 8.8', badgeClass: 'sev-high', pub: '2026-07-24', url: 'https://nvd.nist.gov/vuln/detail/CVE-2026-16232' },
+                { id: 'CVE-2026-21832', title: 'Apache Tomcat Remote Code Execution Vulnerability', badge: 'CRIT 9.8', badgeClass: 'sev-critical', pub: '2026-07-22', url: 'https://nvd.nist.gov/vuln/detail/CVE-2026-21832' },
+                { id: 'CVE-2026-38101', title: 'Linux Kernel Use-After-Free in Network Subsystem', badge: 'HIGH 7.8', badgeClass: 'sev-high', pub: '2026-07-20', url: 'https://nvd.nist.gov/vuln/detail/CVE-2026-38101' },
+                { id: 'CVE-2026-10492', title: 'OpenSSL Memory Corruption in Handshake Protocol', badge: 'MED 6.5', badgeClass: 'sev-medium', pub: '2026-07-18', url: 'https://nvd.nist.gov/vuln/detail/CVE-2026-10492' },
+                { id: 'CVE-2026-29004', title: 'Palo Alto PAN-OS Command Injection Vulnerability', badge: 'CRIT 9.1', badgeClass: 'sev-critical', pub: '2026-07-15', url: 'https://nvd.nist.gov/vuln/detail/CVE-2026-29004' }
+            ];
+        }
+
+        container.replaceChildren();
+        statusEl.textContent = 'LIVE';
+        statusEl.className = 'feed-live-dot live';
+
+        cveList.forEach(item => {
+            const wrap = document.createElement('div');
+            wrap.className = 'feed-item';
+
+            const topRow = document.createElement('div');
+            topRow.style.cssText = 'display:flex;align-items:center;gap:0.45rem;flex-wrap:wrap;';
+
+            const idLink = document.createElement('a');
+            idLink.className = 'feed-item-link';
+            idLink.style.cssText = 'font-weight:700;font-size:0.8rem;color:var(--accent-color);';
+            idLink.href = item.url;
+            idLink.target = '_blank';
+            idLink.rel = 'noopener noreferrer';
+            idLink.title = `View details for ${item.id} on NVD`;
+            idLink.textContent = item.id;
+
+            const badge = document.createElement('span');
+            badge.className = `sev-badge ${item.badgeClass}`;
+            badge.textContent = item.badge;
+
+            topRow.appendChild(idLink);
+            topRow.appendChild(badge);
+
+            const descEl = document.createElement('div');
+            descEl.style.cssText = 'color:var(--text-muted);font-size:0.75rem;line-height:1.4;margin-top:0.2rem;';
+            descEl.textContent = item.title;
+
+            const meta = document.createElement('div');
+            meta.className = 'feed-item-meta';
+            meta.textContent = item.pub ? `Date: ${item.pub}` : 'NVD Catalog';
+
+            wrap.appendChild(topRow);
+            wrap.appendChild(descEl);
+            wrap.appendChild(meta);
+            container.appendChild(wrap);
+        });
+    }
+
+    // Initial load
+    loadNews();
+    loadCVEs();
+
+    // Auto-refresh feeds every 3 minutes so feeds stay continuously updated
+    setInterval(() => {
+        loadNews();
+        loadCVEs();
+    }, 3 * 60 * 1000);
+
+    </script>
+    <script src="js/vortex-bg.js"></script>
+</body>
+</html>

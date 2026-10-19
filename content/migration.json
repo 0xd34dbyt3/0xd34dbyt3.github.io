@@ -1,0 +1,19 @@
+{
+  "status": "file-snapshot",
+  "fileContentApproved": true,
+  "profileApproved": true,
+  "databaseMigration": "pending: read-only connection EPERM",
+  "provenance": "Existing public HTML fallback/sample text preserved at user request; not verified MySQL content. No dates or translations invented.",
+  "fileCounts": {
+    "blog": 2,
+    "project": 3
+  },
+  "publishedCounts": null,
+  "referencedImages": 1,
+  "sources": {
+    "public/detail.html": "854f01a0a1b6fc121924729aa9699c804c1833cb3cfc9b66ed52a464087a25e0",
+    "public/blog.html": "3007bcf079481424229df56f9123d520e7fb7cfa256213feb48a72ccdaffd5ed",
+    "public/projects.html": "e10b307e4cb840edfe89dc56d82808f7a11febdf911c48ac499d2ae04b0cae61",
+    "public/about_me.html": "cd9c5668b218369d20fee6b2e7e405c5b91691e2d6f1b5fd7a826839d81681e3"
+  }
+}

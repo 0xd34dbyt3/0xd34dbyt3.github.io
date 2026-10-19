@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Details — 0xDEADBYTE</title>
+    <link rel="stylesheet" href="styles.css?v=4">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+    <style>
+        .detail-content h1, .detail-content h2, .detail-content h3 { color: var(--accent-color); margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        .detail-content p { color: var(--text-muted); margin-bottom: 1rem; line-height: 1.6; }
+        .detail-content code { background: #1a1a1a; padding: 0.2rem 0.4rem; border-radius: 4px; color: var(--danger-color); }
+        .detail-content pre { background: #0d1117; padding: 1rem; border-radius: 6px; overflow-x: auto; margin-bottom: 1rem; border: 1px solid var(--border-color); }
+        .detail-content pre code { background: transparent; color: #c9d1d9; padding: 0; }
+        .detail-image { width: 100%; max-height: 400px; object-fit: cover; border: 1px solid var(--border-color); border-radius: 6px; margin: 1rem 0; }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <a href="index.html" class="logo-text glitch-text" id="logoText">0xDEADBYTE</a>
+            </div>
+            <nav class="nav-menu">
+                <a href="about_me.html" class="nav-link">./about.me</a>
+                <a href="projects.html" class="nav-link">./projects.exe</a>
+                <a href="blog.html"     class="nav-link">./blog.txt</a>
+                <div class="social-links">
+                    <a href="https://github.com/ParanoidNull" target="_blank" rel="noopener noreferrer" class="github-link" aria-label="GitHub">
+                        <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                    </a>
+                    <a href="https://linkedin.com/in/muhammedfatihöztürk" target="_blank" rel="noopener noreferrer" class="linkedin-link" aria-label="LinkedIn">
+                        <svg class="linkedin-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4.98 3.5C4.98 4.88 3.88 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.32 8.02h4.36V24H.32V8.02zM8.34 8.02h4.18v2.17h.06c.58-1.1 2-2.26 4.12-2.26 4.4 0 5.21 2.9 5.21 6.68V24h-4.36v-8.1c0-1.93-.04-4.41-2.69-4.41-2.69 0-3.1 2.1-3.1 4.27V24H8.34V8.02z"/>
+                        </svg>
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper" style="grid-template-columns: 1fr;">
+            <div class="main-section">
+                <!-- Back Button -->
+                <a href="index.html" id="backLink" class="nav-link" style="display: inline-flex; align-items: center; width: fit-content; margin-bottom: 1.5rem;">
+                    &lt; /root
+                </a>
+
+                <h1 class="name-title glitch-text" id="pageTitle">Loading...</h1>
+                <p class="subtitle" id="pageSubtitle">...</p>
+
+                <div class="detail-content" id="contentArea" style="margin-top: 1.5rem;"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-text">
+                <span>Discipline is Good, But Obsession Makes You Great</span>
+                <span class="footer-separator">|</span>
+                <span>Secure_Connection_Established</span>
+            </div>
+            <div class="footer-copyright">
+                © 2026 Muhammed_Fatih_Öztürk
+            </div>
+        </div>
+    </footer>
+
+    <script type="module">
+        import DataManager from './js/data-manager.js';
+        import './script.js?v=4';
+
+        const SAMPLE_DETAILS = {
+            '1': { title: 'Paranoid_Osint_Tool', fullDesc: '# Paranoid OSINT Tool\n\nA powerful command-line interface tool designed for security researchers to automate open-source intelligence gathering.\n\n## Features\n- Subdomain enumeration\n- Email harvesting\n- Port scanning integration\n\n```bash\npython Paranoid.py -t example.com\n```' },
+            '2': { title: 'Neural_Network_Firewall', fullDesc: '# Neural Network Firewall\n\nUnlike traditional firewalls, this system uses a trained LSTM model to detect anomalies in packet headers in real-time.\n\n### Tech Stack\n- Python / PyTorch\n- iptables binding\n- Real-time logging' },
+            '3': { title: 'Ghost_Shell_V2', fullDesc: '# Ghost Shell V2\n\n**Educational Purpose Only**\n\nA proof-of-concept reverse shell demonstrating memory evasion techniques written in Rust.\n\n- Zero-dependency\n- AES-256 Command Encryption' },
+            '4': { title: 'The_Art_of_Evasion', fullDesc: "# The Art of Evasion\n\nEDR solutions have evolved, but so have attack techniques. In this article, we explore how syscall hooking can be circumvented using direct system calls.\n\n## Direct Syscalls\n\nUsing Hell's Gate technique to resolve syscall numbers dynamically..." },
+            '5': { title: 'AI_Red_Teaming', fullDesc: '# AI Red Teaming\n\nLarge Language Models are vulnerable to prompt injection and adversarial attacks. We discuss jailbreak methodologies and safety boundary testing.' }
+        };
+
+        async function loadDetail() {
+            const params = new URLSearchParams(window.location.search);
+            const type = params.get('type');
+            const id = params.get('id');
+            const backLink = document.getElementById('backLink');
+
+            let item = null;
+
+            if (type === 'project' && id) {
+                item = await DataManager.getProjectById(id);
+                backLink.href = 'projects.html';
+                backLink.textContent = '< ./projects.exe';
+            } else if (type === 'blog' && id) {
+                item = await DataManager.getBlogById(id);
+                backLink.href = 'blog.html';
+                backLink.textContent = '< ./blog.txt';
+            }
+
+            if (!item || item.error) {
+                if (id && SAMPLE_DETAILS[id]) {
+                    item = SAMPLE_DETAILS[id];
+                }
+            }
+
+            const pageTitle = document.getElementById('pageTitle');
+            const pageSubtitle = document.getElementById('pageSubtitle');
+            const contentArea = document.getElementById('contentArea');
+            contentArea.replaceChildren();
+
+            if (item && !item.error) {
+                pageTitle.textContent = item.title || 'Untitled';
+                pageSubtitle.textContent = 'READ_MODE: ENABLED';
+
+                if (item.image) {
+                    const img = document.createElement('img');
+                    img.src = item.image;
+                    img.alt = item.title || 'Detail image';
+                    img.className = 'detail-image';
+                    contentArea.appendChild(img);
+                }
+
+                const bodyDiv = document.createElement('div');
+                const textContent = item.fullDesc || item.shortDesc || '';
+                if (window.marked && typeof window.marked.parse === 'function') {
+                    let parsedHtml = window.marked.parse(textContent);
+                    parsedHtml = parsedHtml.replace(/<img\s+src="([^"]+)"\s+alt="([^"|]*)\|?([^"]*)"/g, (match, src, altText, size) => {
+                        let styleAttr = 'max-width:100%; height:auto; display:block; margin:1.25rem auto; border-radius:6px; border:1px solid var(--border-color);';
+                        if (size) {
+                            const cleanSize = size.trim();
+                            if (cleanSize) {
+                                const w = (cleanSize.endsWith('%') || cleanSize.endsWith('px')) ? cleanSize : cleanSize + 'px';
+                                styleAttr = `width:${w}; max-width:100%; height:auto; display:block; margin:1.25rem auto; border-radius:6px; border:1px solid var(--border-color);`;
+                            }
+                        }
+                        return `<img src="${src}" alt="${altText}" style="${styleAttr}"`;
+                    });
+                    bodyDiv.className = 'markdown-content';
+                    bodyDiv.innerHTML = parsedHtml;
+                } else {
+                    bodyDiv.textContent = textContent;
+                }
+                contentArea.appendChild(bodyDiv);
+            } else {
+                pageTitle.textContent = '404_NOT_FOUND';
+                pageSubtitle.textContent = 'The requested resource could not be located.';
+            }
+        }
+
+        loadDetail().then(() => {
+            window.dispatchEvent(new Event('contentUpdated'));
+        });
+    </script>
+</body>
+
+</html>

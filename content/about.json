@@ -1,0 +1,193 @@
+{
+  "whoami": {
+    "en": "I approach cybersecurity not from a defensive starting point, but from the attacker's perspective. I am a Red Team and AI Security–focused researcher who prioritizes understanding how systems break before deciding how to protect them. Real security only exists when systems are tested with an adversarial mindset.\n\nMy work focuses on AI Red Teaming, reverse engineering, malware development, attack techniques, and threat simulation. I analyze assumptions, expose blind spots, and challenge false senses of security.",
+    "tr": ""
+  },
+  "profile": {
+    "name": "Muhammed Fatih Öztürk",
+    "status": "",
+    "location": "Sivas, TR",
+    "role": {
+      "en": "Security Researcher & Developer",
+      "tr": ""
+    },
+    "core_focus": [
+      {
+        "en": "Security",
+        "tr": ""
+      },
+      {
+        "en": "AI",
+        "tr": ""
+      },
+      {
+        "en": "Development",
+        "tr": ""
+      }
+    ],
+    "image": "assets/user-icon.png"
+  },
+  "education": [
+    {
+      "institution": {
+        "en": "Sivas Cumhuriyet University",
+        "tr": ""
+      },
+      "detail": {
+        "en": "Management Information Systems — Sivas, TR",
+        "tr": ""
+      }
+    }
+  ],
+  "work": [
+    {
+      "title": {
+        "en": "Security Researcher & Red Teamer",
+        "tr": ""
+      },
+      "company": {
+        "en": "Independent Research & AI Security",
+        "tr": ""
+      },
+      "duration": "2024 - Present",
+      "desc": {
+        "en": "Focusing on AI Red Teaming, vulnerability research, exploit PoCs, and adversarial security testing.",
+        "tr": ""
+      }
+    }
+  ],
+  "skills": [
+    {
+      "category": {
+        "en": "Security Ops",
+        "tr": ""
+      },
+      "items": [
+        {
+          "en": "Appsec (DAST/SAST)",
+          "tr": ""
+        },
+        {
+          "en": "Network Security",
+          "tr": ""
+        },
+        {
+          "en": "Digital Forensics",
+          "tr": ""
+        },
+        {
+          "en": "Malware Analysis",
+          "tr": ""
+        },
+        {
+          "en": "Burp Suite",
+          "tr": ""
+        }
+      ]
+    },
+    {
+      "category": {
+        "en": "Artificial Intel",
+        "tr": ""
+      },
+      "items": [
+        {
+          "en": "LLM Integration",
+          "tr": ""
+        },
+        {
+          "en": "NLP",
+          "tr": ""
+        },
+        {
+          "en": "Neural Networks",
+          "tr": ""
+        },
+        {
+          "en": "Computer Vision",
+          "tr": ""
+        }
+      ]
+    },
+    {
+      "category": {
+        "en": "Syntax / Langs",
+        "tr": ""
+      },
+      "items": [
+        {
+          "en": "Python",
+          "tr": ""
+        },
+        {
+          "en": "C#",
+          "tr": ""
+        },
+        {
+          "en": "Bash",
+          "tr": ""
+        },
+        {
+          "en": "Rust",
+          "tr": ""
+        }
+      ]
+    },
+    {
+      "category": {
+        "en": "Frameworks",
+        "tr": ""
+      },
+      "items": [
+        {
+          "en": "React",
+          "tr": ""
+        },
+        {
+          "en": "Node.js",
+          "tr": ""
+        },
+        {
+          "en": "TensorFlow",
+          "tr": ""
+        },
+        {
+          "en": "PyTorch",
+          "tr": ""
+        }
+      ]
+    }
+  ],
+  "certs": [
+    {
+      "title": {
+        "en": "CS50 Series",
+        "tr": ""
+      },
+      "desc": {
+        "en": "Completed Harvard's CS50 series focusing on fundamentals of computer science.",
+        "tr": ""
+      }
+    },
+    {
+      "title": {
+        "en": "ISO Standards",
+        "tr": ""
+      },
+      "desc": {
+        "en": "Familiar with ISO/IEC 27001 framework and controls.",
+        "tr": ""
+      }
+    },
+    {
+      "title": {
+        "en": "Vendor Certs",
+        "tr": ""
+      },
+      "desc": {
+        "en": "Vendor-specific certs and training (ongoing).",
+        "tr": ""
+      }
+    }
+  ]
+}

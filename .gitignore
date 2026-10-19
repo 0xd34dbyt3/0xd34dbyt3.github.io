@@ -1,0 +1,12 @@
+.env
+.env.*
+*.zip
+*.log
+*.sql
+*.db
+*.bak
+.private/
+node_modules/
+dist/
+__pycache__/
+*.pyc

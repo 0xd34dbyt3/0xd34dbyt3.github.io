@@ -1,0 +1,13 @@
+{
+  "id": "1",
+  "slug": "paranoid_osint_tool",
+  "title": "Paranoid_Osint_Tool",
+  "title_tr": "",
+  "shortDesc": "A comprehensive OSINT tool for gathering intelligence from public sources.",
+  "shortDesc_tr": "",
+  "fullDesc": "# Paranoid OSINT Tool\n\nA powerful command-line interface tool designed for security researchers to automate open-source intelligence gathering.\n\n## Features\n- Subdomain enumeration\n- Email harvesting\n- Port scanning integration\n\n```bash\npython Paranoid.py -t example.com\n```",
+  "fullDesc_tr": "",
+  "imageUrl": "",
+  "createdAt": "",
+  "updatedAt": ""
+}

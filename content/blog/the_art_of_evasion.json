@@ -1,0 +1,13 @@
+{
+  "id": "4",
+  "slug": "the_art_of_evasion",
+  "title": "The_Art_of_Evasion",
+  "title_tr": "",
+  "shortDesc": "Analyzing modern EDR solutions and how they can be bypassed using direct system calls.",
+  "shortDesc_tr": "",
+  "fullDesc": "# The Art of Evasion\n\nEDR solutions have evolved, but so have attack techniques. In this article, we explore how syscall hooking can be circumvented using direct system calls.\n\n## Direct Syscalls\n\nUsing Hell's Gate technique to resolve syscall numbers dynamically...",
+  "fullDesc_tr": "",
+  "imageUrl": "",
+  "createdAt": "",
+  "updatedAt": ""
+}

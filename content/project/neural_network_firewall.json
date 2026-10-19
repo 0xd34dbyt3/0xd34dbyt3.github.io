@@ -1,0 +1,13 @@
+{
+  "id": "2",
+  "slug": "neural_network_firewall",
+  "title": "Neural_Network_Firewall",
+  "title_tr": "",
+  "shortDesc": "AI-driven firewall system that adapts to new threat patterns in real-time.",
+  "shortDesc_tr": "",
+  "fullDesc": "# Neural Network Firewall\n\nUnlike traditional firewalls, this system uses a trained LSTM model to detect anomalies in packet headers in real-time.\n\n### Tech Stack\n- Python / PyTorch\n- iptables binding\n- Real-time logging",
+  "fullDesc_tr": "",
+  "imageUrl": "",
+  "createdAt": "",
+  "updatedAt": ""
+}

@@ -1,0 +1,9 @@
+{
+  "origin": "https://0xd34dbyt3.github.io",
+  "basePath": "/",
+  "repository": "0xd34dbyt3/0xd34dbyt3.github.io",
+  "branch": "main",
+  "oauthOrigin": "https://OAUTH_HOST.example.invalid",
+  "contentReady": true,
+  "adminEnabled": false
+}

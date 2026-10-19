@@ -1,0 +1,13 @@
+{
+  "id": "3",
+  "slug": "ghost_shell_v2",
+  "title": "Ghost_Shell_V2",
+  "title_tr": "",
+  "shortDesc": "Encrypted reverse shell written in Rust with anti-forensic capabilities.",
+  "shortDesc_tr": "",
+  "fullDesc": "# Ghost Shell V2\n\n**Educational Purpose Only**\n\nA proof-of-concept reverse shell demonstrating memory evasion techniques written in Rust.\n\n- Zero-dependency\n- AES-256 Command Encryption",
+  "fullDesc_tr": "",
+  "imageUrl": "",
+  "createdAt": "",
+  "updatedAt": ""
+}

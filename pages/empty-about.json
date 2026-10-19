@@ -1,0 +1,15 @@
+{
+  "whoami": { "en": "", "tr": "" },
+  "profile": {
+    "name": "",
+    "status": "",
+    "location": "",
+    "role": { "en": "", "tr": "" },
+    "core_focus": [],
+    "image": ""
+  },
+  "education": [],
+  "work": [],
+  "skills": [],
+  "certs": []
+}

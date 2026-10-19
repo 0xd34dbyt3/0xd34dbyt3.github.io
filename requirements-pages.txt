@@ -1,0 +1,4 @@
+beautifulsoup4==4.15.0
+bleach==6.2.0
+mistune==3.2.1
+tinycss2==1.5.1
