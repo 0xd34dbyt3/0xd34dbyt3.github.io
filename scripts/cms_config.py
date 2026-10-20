@@ -53,7 +53,10 @@ def config(site):
         field("work", "list", fields=[bilingual("title"), bilingual("company"), field("duration", required=False), bilingual("desc", "text")], required=False),
         field("skills", "list", fields=[bilingual("category"), field("items", "list", field=bilingual("item"))], required=False),
         field("certs", "list", fields=[bilingual("title"), bilingual("desc", "text")], required=False)]
-    collections.append(dict(name="pages", label="Hakkımda", files=[dict(name="about", label="Hakkımda", file="content/about.json", fields=about)]))
+    collections.append(dict(name="about_page", label="Hakkımda", files=[dict(name="about", label="Hakkımda", file="content/about.json", fields=about)]))
+    collection_names = [collection["name"] for collection in collections]
+    if len(collection_names) != len(set(collection_names)):
+        raise ValueError("Decap CMS collection names must be unique")
     return dict(backend=dict(name="github", repo=site["repository"], branch=site["branch"],
                              base_url=site["oauthOrigin"], auth_endpoint="auth"),
                 publish_mode="simple", media_folder="content/media", public_folder=site["basePath"] + "media",
