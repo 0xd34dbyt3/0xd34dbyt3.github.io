@@ -3,7 +3,7 @@
   "basePath": "/",
   "repository": "0xd34dbyt3/0xd34dbyt3.github.io",
   "branch": "main",
-  "oauthOrigin": "https://OAUTH_HOST.example.invalid",
+  "oauthOrigin": "https://portfolio-admin-auth.muhammedfatihozturk02.workers.dev",
   "contentReady": true,
-  "adminEnabled": false
+  "adminEnabled": true
 }
