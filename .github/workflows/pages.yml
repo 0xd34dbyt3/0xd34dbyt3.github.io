@@ -28,7 +28,7 @@ jobs:
           node-version: '22'
       - run: python -m pip install -r requirements-pages.txt
       - run: python -m unittest discover -s scripts/tests -v
-      - run: node --test scripts/tests/oauth.test.cjs
+      - run: node --test scripts/tests/*.test.cjs
       - run: python scripts/check_repository_sources.py
       - run: python scripts/build_pages.py --release --refresh-feeds --output dist/site
       - uses: actions/upload-pages-artifact@v3

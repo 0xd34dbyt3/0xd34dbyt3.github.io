@@ -1,0 +1,30 @@
+/* Shared by detail pages and CMS preview; no visitor navigation/animation rules. */
+.content-wrapper > .main-section { min-width: 0; max-width: 100%; }
+.markdown-content, .detail-content { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.markdown-content { color: var(--text-muted, #b8c0cc); line-height: 1.7; }
+.markdown-content h1, .markdown-content h2, .markdown-content h3,
+.markdown-content h4 { color: var(--accent-color, #00ff9d); margin: 1.5rem 0 .5rem; }
+.markdown-content p, .markdown-content ul, .markdown-content ol { margin-bottom: 1rem; }
+.markdown-content ul, .markdown-content ol { padding-left: 1.5rem; }
+.markdown-content a { color: var(--accent-color, #00ff9d); }
+.markdown-content img, .detail-content .detail-image { max-width: 100%; height: auto; max-height: none; object-fit: contain; }
+.markdown-content .content-image { max-width: 100%; margin: 1.25rem 0; }
+.markdown-content .content-image img { display: block; width: 100%; height: auto; border-radius: 6px; }
+.markdown-content .align-left { margin-right: auto; }
+.markdown-content .align-center { margin-left: auto; margin-right: auto; }
+.markdown-content .align-right { margin-left: auto; }
+.markdown-content .crop-square img { aspect-ratio: 1; object-fit: cover; }
+.markdown-content .crop-wide img { aspect-ratio: 16 / 9; object-fit: cover; }
+.markdown-content figcaption { font-size: .85rem; text-align: center; color: var(--text-muted, #b8c0cc); }
+.markdown-content pre { max-width: 100%; min-width: 0; overflow-x: auto; white-space: pre; overflow-wrap: normal; background: #0d1117; border: 1px solid var(--border-color, #30363d); border-radius: 6px; padding: 1rem; margin: 0 0 1rem; }
+.markdown-content pre code { padding: 0; background: transparent; color: #c9d1d9; font: 13px/1.6 'JetBrains Mono', monospace; }
+.markdown-content pre[data-wrap="true"], .markdown-content pre[data-wrap="true"] code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.code-toolbar { display: flex; justify-content: space-between; align-items: center; gap: .5rem; background: #161b22; color: #c9d1d9; padding: .4rem .75rem; border: 1px solid #30363d; border-radius: 6px 6px 0 0; font: 12px/1.6 monospace; }
+.code-toolbar button { background: transparent; color: #00ff9d; border: 1px solid #3b6556; border-radius: 4px; padding: .25rem .6rem; cursor: pointer; }
+.markdown-content .tok-comment { color: #8b949e; }
+.markdown-content .tok-string { color: #a5d6ff; }
+.markdown-content .tok-keyword { color: #ff7b72; }
+.markdown-content .tok-number { color: #d2a8ff; }
+.markdown-content table { display: block; max-width: 100%; overflow-x: auto; }
+.cms-preview { padding: 16px; box-sizing: border-box; margin: auto; max-width: 100%; background: #090d12; }
+.cms-preview-controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; }

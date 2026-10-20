@@ -20,10 +20,11 @@ from bleach.css_sanitizer import CSSSanitizer
 import mistune
 from bs4 import BeautifulSoup
 from cms_config import config as cms_config
+from content_blocks import expand_blocks
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGES = ["index.html", "about_me.html", "blog.html", "projects.html", "detail.html"]
-ASSETS = ["styles.css", "script.js", "js/vortex-bg.js", "assets/background.png", "assets/project-icon.png", "assets/user-icon.png"]
+ASSETS = ["styles.css", "script.js", "js/vortex-bg.js", "content.css", "js/content-tools.js", "assets/background.png", "assets/project-icon.png", "assets/user-icon.png"]
 POST_FIELDS = {"id", "slug", "title", "title_tr", "shortDesc", "shortDesc_tr", "fullDesc", "fullDesc_tr", "imageUrl", "createdAt", "updatedAt"}
 TAGS = set(bleach.sanitizer.ALLOWED_TAGS) | {"p", "h1", "h2", "h3", "h4", "h5", "h6", "pre", "code", "img", "hr", "br", "table", "thead", "tbody", "tr", "th", "td", "del", "div", "span", "details", "summary"}
 MARKDOWN = mistune.create_markdown(escape=False, plugins=['strikethrough', 'table', 'url'])
@@ -94,6 +95,7 @@ def markdown_html(source, base):
         for attr in ("src", "href"):
             if el.has_attr(attr):
                 el[attr] = local_url(el[attr], base)
+    expand_blocks(soup, local_url, base)
     return str(soup)
 
 
@@ -127,6 +129,9 @@ def template(name, base):
         for attr in ("src", "href"):
             if node.has_attr(attr):
                 node[attr] = local_url(node[attr], base)
+    if name == "detail.html":
+        soup.head.append(soup.new_tag("link", rel="stylesheet", href=base + "content.css"))
+        soup.body.append(soup.new_tag("script", src=base + "js/content-tools.js", defer=True))
     return soup
 
 
@@ -228,6 +233,10 @@ def render_about(soup, about, base, lang="tr"):
     fragment(soup, "#skillGrid", skills)
     fragment(soup, "#certList", ''.join('<details><summary style="color:var(--text-muted)">' + esc(text(c.get("title"), lang)) + '</summary><p style="color:var(--text-secondary);margin-top:0.5rem">' + esc(text(c.get("desc"), lang)) + '</p></details>' for c in about.get("certs", [])))
     profile = about.get("profile", {})
+    if profile.get("status"):
+        status = soup.new_tag("div", attrs={"class": "meta-row", "id": "profileStatus"})
+        status.string = profile["status"]
+        soup.select_one("#profileName").insert_after(status)
     for selector, key in [("#profileName", "name"), ("#profileLoc", "location"), ("#profileRole", "role")]:
         label(soup, selector, text(profile.get(key), lang))
     soup.select_one("#profileImage")["src"] = local_url(profile.get("image") or "assets/user-icon.png", base)
@@ -422,6 +431,8 @@ def build(output, content=ROOT / "content", site=None, refresh=False, release=Fa
         if "/" in name or "\\" in name or source.is_symlink() or not source.resolve().is_relative_to(content.resolve()) or not source.is_file() or source.suffix.lower() not in {".png", ".jpg", ".jpeg", ".gif", ".webp"}:
             raise ValueError("Missing or unsupported approved image: " + name)
         raw = source.read_bytes()
+        if len(raw) > 10 * 1024 * 1024:
+            raise ValueError("Görsel 10 MiB sınırını aşıyor: " + name)
         valid = raw.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"GIF87a", b"GIF89a")) or (raw[:4] == b"RIFF" and raw[8:12] == b"WEBP")
         if not valid:
             raise ValueError("Image signature rejected: " + name)
@@ -435,6 +446,7 @@ def build(output, content=ROOT / "content", site=None, refresh=False, release=Fa
     (output / "admin").mkdir()
     if admin_enabled:
         shutil.copyfile(ROOT / "pages/admin.html", output / "admin/index.html")
+        shutil.copyfile(ROOT / "pages/admin.js", output / "admin/admin.js")
         dump(output / "admin/config.yml", cms_config(site))
     else:
         shutil.copyfile(ROOT / "pages/admin-pending.html", output / "admin/index.html")

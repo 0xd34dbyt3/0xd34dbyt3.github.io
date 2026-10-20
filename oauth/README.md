@@ -11,14 +11,19 @@ Sunucunun secret/environment yöneticisine tanımlayın (repoya yazmayın):
 
 - `GITHUB_CLIENT_ID`: GitHub OAuth App client ID.
 - `GITHUB_CLIENT_SECRET`: OAuth App secret; yalnızca bu sunucuda.
-- `CMS_ORIGIN`: `https://GITHUB_OWNER.github.io` (proje yolu eklenmez).
+- `CMS_ORIGIN`: `https://0xd34dbyt3.github.io` (proje yolu eklenmez).
 - `OAUTH_ORIGIN`: `https://OAUTH_HOST` (sonunda slash yok).
-- `GITHUB_REPOSITORY`: `GITHUB_OWNER/GITHUB_REPOSITORY`.
+- `GITHUB_REPOSITORY`: `0xd34dbyt3/0xd34dbyt3.github.io`.
 - `PORT`: isteğe bağlı, varsayılan 8787.
 
 GitHub Settings → Developer settings → OAuth Apps → New OAuth App:
-Homepage URL gerçek site URL'si, callback **`https://OAUTH_HOST/callback`**.
+Homepage URL `https://0xd34dbyt3.github.io`, callback **`OAUTH_ORIGIN` + `/callback`**.
+Gerçek OAuth sunucu adresi henüz verilmedi; `OAUTH_HOST` bir örnektir, kullanılabilir
+bir callback adresi değildir. GitHub Pages OAuth secret saklayamaz ve bu sunucuyu
+çalıştıramaz. Tek eksik kurulum: mevcut Node 22+ HTTPS sunucusuna bu broker'ı
+yerleştirip yukarıdaki ortam değişkenleriyle GitHub OAuth App'i bağlamak.
 `site.config.json` içindeki `oauthOrigin`, OAuth origin ile aynı olmalı.
+Sunucu kurulduktan sonra `adminEnabled: true` yapılır. Öncesinde admin kapalı kalır.
 Broker `/auth` ve `/callback` sunar. İstemciden gelen scope ve redirect adreslerini
 kullanmaz; public repo için `public_repo` ister, ilgili depoda `push` yetkisini
 GitHub API ile denetler. Bu OAuth kapsamı kullanıcının başka public depolarına da
@@ -47,3 +52,8 @@ Kaynaklar:
 - https://decapcms.org/docs/external-oauth-clients/
 - https://decapcms.org/docs/backends-overview/
 - https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+
+20 Ekim 2026 belge kontrolü: Decap GitHub backend için public depoda `public_repo`
+gerekiyor; `repo` istenmiyor. GitHub OAuth App kapsamı tek depoyla sınırlanamaz.
+Mevcut broker PKCE S256, tek kullanımlık state ve hedef depoda `permissions.push`
+kontrolünü korur. Yeni hesap/ücretli hizmet oluşturulmadı.
