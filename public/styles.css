@@ -257,6 +257,27 @@ img {
     text-shadow: 0 0 15px var(--accent-color);
 }
 
+/* The final home title alone determines wrapping and height, even mid-scramble. */
+.name-title[data-stable-glitch] {
+    position: relative;
+}
+
+[data-stable-glitch].is-scrambling .glitch-measure {
+    opacity: 0;
+}
+
+[data-stable-glitch] .glitch-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+[data-stable-glitch] .glitch-overlay > span {
+    position: absolute;
+    white-space: pre;
+    line-height: 1;
+}
+
 .subtitle {
     font-size: 0.95rem;
     color: var(--text-muted);

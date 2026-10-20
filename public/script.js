@@ -6,6 +6,47 @@
 // Text Scramble / Decoding Effect
 const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*';
 
+// Keep the real text in flow. Each animated glyph uses its final glyph's
+// position and only replacement characters that fit, without clipping/scaling.
+function prepareHomeGlitch(element) {
+    const measure = element.querySelector('.glitch-measure');
+    const overlay = element.querySelector('.glitch-overlay');
+    const text = measure.firstChild;
+    const bounds = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const context = document.createElement('canvas').getContext('2d');
+    context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const range = document.createRange();
+    const cells = Array.from(text.textContent, (letter, index) => {
+        range.setStart(text, index);
+        range.setEnd(text, index + 1);
+        const rect = range.getBoundingClientRect();
+        const cell = document.createElement('span');
+        cell.style.left = `${rect.left - bounds.left}px`;
+        cell.style.top = `${rect.top - bounds.top}px`;
+        // Range height is the font's glyph box, rather than the heading line box.
+        cell.style.lineHeight = `${rect.height}px`;
+        const width = context.measureText(letter).width;
+        const choices = Array.from(SCRAMBLE_CHARS)
+            .filter(char => context.measureText(char).width <= width);
+        overlay.appendChild(cell);
+        return { cell, choices: choices.length ? choices : [letter] };
+    });
+    return (value, finished) => {
+        if (finished) {
+            overlay.replaceChildren();
+            element.classList.remove('is-scrambling');
+            return;
+        }
+        Array.from(value).forEach((letter, index) => {
+            const { cell, choices } = cells[index];
+            cell.textContent = letter === text.textContent[index] ? letter
+                : choices[Math.floor(Math.random() * choices.length)];
+        });
+        element.classList.add('is-scrambling');
+    };
+}
+
 /**
  * Glitch / Text Scramble Effect — Page Load, Scroll, Touch & Hover Support
  * @param {HTMLElement} element - The element to animate
@@ -18,10 +59,13 @@ function triggerGlitch(element) {
     if (element.glitchInterval) {
         clearInterval(element.glitchInterval);
     }
+    const stable = element.hasAttribute('data-stable-glitch');
+    if (stable) element.querySelector('.glitch-overlay').replaceChildren();
+    const render = stable ? prepareHomeGlitch(element) : null;
 
     let iteration = 0;
     element.glitchInterval = setInterval(() => {
-        element.textContent = targetText
+        const value = targetText
             .split("")
             .map((letter, index) => {
                 if (index < iteration || letter === ' ' || letter === '_') {
@@ -30,6 +74,8 @@ function triggerGlitch(element) {
                 return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
             })
             .join("");
+        if (render) render(value, iteration >= targetText.length);
+        else element.textContent = value;
 
         if (iteration >= targetText.length) {
             clearInterval(element.glitchInterval);
@@ -67,7 +113,19 @@ function initGlitchAnimation(element) {
 
 function autoInitGlitches() {
     const glitchElements = document.querySelectorAll('.glitch-text');
-    glitchElements.forEach(el => initGlitchAnimation(el));
+    glitchElements.forEach(el => {
+        if (el.hasAttribute('data-stable-glitch')) {
+            if (el.glitchInitialized) return;
+            el.glitchInitialized = true;
+            // Measure only after the actual font (or its fallback) has settled.
+            document.fonts.ready.then(() => initGlitchAnimation(el));
+            window.addEventListener('resize', () => {
+                clearInterval(el.glitchInterval);
+                el.querySelector('.glitch-overlay').replaceChildren();
+                el.classList.remove('is-scrambling');
+            });
+        } else initGlitchAnimation(el);
+    });
 }
 
 // Initial run & event listener for dynamic updates
