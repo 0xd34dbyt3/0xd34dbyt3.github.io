@@ -7,8 +7,49 @@
   <meta name="referrer" content="no-referrer">
   <title>İçerik yönetimi — 0xDEADBYTE</title>
   <style>
-    #cms-status { position:fixed; bottom:0; left:0; right:0; z-index:10000; background:#101820; color:#fff; padding:8px 16px; font:12px/1.5 sans-serif; }
-    #cms-status a { color:#7effc1; } body { padding-bottom:70px; }
+    :root { --bg-primary:#0a0a0a; --bg-secondary:#111; --bg-tertiary:#1a1a1a; --text-primary:#fff; --text-secondary:#f2f2f2; --text-muted:#b8b8b8; --border-color:#333; --accent-color:#fff; }
+    html, body { min-height:100%; height:auto!important; overflow-y:auto!important; background:var(--bg-primary)!important; color:var(--text-primary)!important; }
+    body { margin:0; padding:0 0 76px!important; font-family:'JetBrains Mono',monospace; }
+    #nc-root { min-height:100vh; height:auto!important; overflow:visible!important; padding-bottom:82px; background:var(--bg-primary); color:var(--text-primary); font-family:'JetBrains Mono',monospace; }
+    #nc-root button { min-height:38px; color:#f2f2f2; background:#171717; border:1px solid #484848; border-radius:5px; cursor:pointer; }
+    #nc-root button:hover:not(:disabled) { color:#fff; border-color:#fff; }
+    #nc-root input, #nc-root textarea, #nc-root select { max-width:100%; color:#f2f2f2; background:#111; border:1px solid #555; border-radius:4px; }
+    #nc-root input:focus, #nc-root textarea:focus, #nc-root select:focus { outline:2px solid #aaa; outline-offset:1px; }
+    #cms-status { position:fixed; bottom:0; left:0; right:0; z-index:10000; display:flex; flex-wrap:wrap; gap:4px 12px; background:#101820; color:#fff; padding:8px 16px; font:12px/1.5 sans-serif; border-top:1px solid #333; }
+    #cms-status a { color:#7effc1; }
+    #nc-root .cms-block-editor { width:100%; min-width:0; max-width:100%; overflow:visible; color:#f2f2f2; }
+    #nc-root .cms-block-editor-form, #nc-root .cms-mobile-preview { min-width:0; max-width:100%; overflow:visible; }
+    #nc-root .cms-mobile-tabs { display:none; }
+    #nc-root .cms-block-help { color:#bbb; margin:0 0 12px; line-height:1.5; }
+    #nc-root .cms-content-block { min-width:0; max-width:100%; margin:12px 0; padding:14px; border:1px solid #3b3b3b; border-radius:7px; background:#111; }
+    #nc-root .cms-block-header { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; color:#fff; }
+    #nc-root .cms-block-actions { display:flex; flex-wrap:wrap; gap:6px; }
+    #nc-root .cms-block-actions button { min-width:40px; }
+    #nc-root .cms-block-actions .cms-block-delete { color:#ff8d8d; }
+    #nc-root .cms-block-gap { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; min-height:42px; }
+    #nc-root .cms-block-gap > button { color:#ddd; }
+    #nc-root .cms-add-options { display:flex; flex-wrap:wrap; gap:6px; }
+    #nc-root .cms-add-options button { color:#fff; border-color:#777; }
+    #nc-root .cms-block-field { display:flex; flex-direction:column; gap:5px; min-width:0; margin:10px 0; color:#ddd; }
+    #nc-root .cms-block-field > input, #nc-root .cms-block-field > textarea, #nc-root .cms-block-field > select { width:100%; min-height:40px; padding:8px; }
+    #nc-root .cms-block-field > textarea { resize:vertical; line-height:1.5; }
+    #nc-root .cms-wrap-option { flex-direction:row; align-items:center; }
+    #nc-root .cms-wrap-option input { width:20px; height:20px; }
+    #nc-root .cms-image-settings { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; }
+    #nc-root .cms-image-block-preview { max-width:100%; margin:10px 0; }
+    #nc-root .cms-image-block-preview img { display:block; max-width:100%; height:auto; object-fit:contain; }
+    #nc-root .cms-code-input { font:13px/1.55 'JetBrains Mono',monospace; white-space:pre; overflow-x:auto; overflow-wrap:normal; }
+    #nc-root .cms-native-image-control { min-height:44px; }
+    #nc-root .cms-mobile-preview { display:none; }
+    @media (max-width:767px) {
+      #nc-root .cms-mobile-tabs { position:sticky; top:0; z-index:4; display:flex; gap:8px; padding:8px 0; background:#0a0a0a; }
+      #nc-root .cms-mobile-tabs button { flex:1; }
+      #nc-root .cms-mobile-tabs button[aria-selected="true"] { color:#fff; border-color:#fff; }
+      #nc-root .cms-block-editor-form[data-mobile-active="false"], #nc-root .cms-mobile-preview[data-mobile-active="false"] { display:none; }
+      #nc-root .cms-mobile-preview[data-mobile-active="true"] { display:block; }
+      #nc-root .cms-content-block { padding:10px; }
+      #cms-status { padding:7px 10px; }
+    }
   </style>
 </head>
 <body>

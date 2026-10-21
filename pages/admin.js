@@ -100,6 +100,140 @@
     toPreview: codePreview
   });
 
+  const NativeImageControl = CMS.getWidget('image').control;
+  const MarkdownPreview = CMS.getWidget('markdown').preview;
+  const blockLabel = type => ({text:'Metin', image:'Görsel', code:'Kod'})[type];
+  const BlockEditor = createClass({
+    getInitialState() {
+      this.lastValue = typeof this.props.value === 'string' ? this.props.value : '';
+      return {blocks:T.parseDocument(this.lastValue), openGap:null, mobileTab:'edit'};
+    },
+    componentWillReceiveProps(nextProps) {
+      const incoming = typeof nextProps.value === 'string' ? nextProps.value : '';
+      if (incoming !== this.lastValue) {
+        this.lastValue = incoming;
+      this.setState({blocks:T.parseDocument(incoming), openGap:null, mobileTab:'edit'});
+      }
+    },
+    commit(blocks) {
+      this.setState({blocks});
+      this.lastValue = T.serializeDocument(blocks);
+      this.props.onChange(this.lastValue);
+      changed();
+    },
+    insert(index, type) {
+      const blocks = this.state.blocks.slice();
+      blocks.splice(index, 0, T.newBlock(type));
+      this.setState({openGap:null});
+      this.commit(blocks);
+    },
+    updateText(index, value) {
+      const blocks = this.state.blocks.slice();
+      blocks[index] = {...blocks[index], value};
+      this.commit(blocks);
+    },
+    updateData(index, patch) {
+      const blocks = this.state.blocks.slice();
+      blocks[index] = {...blocks[index], value:{...blocks[index].value, ...patch}, raw:null};
+      this.commit(blocks);
+    },
+    move(index, delta) {
+      const target = index + delta;
+      if (target < 0 || target >= this.state.blocks.length) return;
+      const blocks = this.state.blocks.slice();
+      [blocks[index], blocks[target]] = [blocks[target], blocks[index]];
+      this.commit(blocks);
+    },
+    remove(index) {
+      if (!window.confirm('Bu bloğu silmek istiyor musunuz?')) return;
+      const blocks = this.state.blocks.slice();
+      blocks.splice(index, 1);
+      if (!blocks.length) blocks.push(T.newBlock('text'));
+      this.commit(blocks);
+    },
+    renderGap(index) {
+      const open = this.state.openGap === index;
+      return h('div', {className:'cms-block-gap', key:'gap-' + index},
+        h('button', {type:'button', className:'cms-add-here', 'aria-label':'Buraya ekle', onClick:() => this.setState({openGap:open ? null : index})}, '＋ Buraya ekle'),
+        open ? h('div', {className:'cms-add-options', role:'group', 'aria-label':'Eklenecek blok türü'},
+          ...['text','image','code'].map(type => h('button', {key:type, type:'button', onClick:() => this.insert(index, type)}, blockLabel(type)))) : null);
+    },
+    renderBlock(block, index) {
+      const data = block.value || {};
+      let control;
+      if (block.type === 'text') {
+        control = h('label', {className:'cms-block-field'}, h('span', {}, 'Metin (Markdown; HTML yazmanız gerekmez)'),
+          h('textarea', {value:block.value, rows:8, spellCheck:true, 'aria-label':'Metin bloğu', placeholder:'Başlık, paragraf, liste veya bağlantı…', onChange:event => this.updateText(index, event.target.value)}));
+      } else if (block.type === 'image') {
+        const field = this.props.field.set('widget', 'image').set('label', 'Dosya seç / yükle').set('required', false);
+        const src = typeof data.src === 'string' ? data.src : '';
+        let preview = null;
+        try { if (src) preview = h('img', {src:T.safeImage(this.props.getAsset ? String(this.props.getAsset(src)) : src, true), alt:data.alt || ''}); }
+        catch { preview = h('p', {role:'alert'}, 'Görsel adresi geçersiz.'); }
+        control = h('div', {className:'cms-image-block'},
+          h(NativeImageControl, {...this.props, value:src, field, forID:'image-' + block.key, classNameWrapper:'cms-native-image-control', onChange:value => this.updateData(index, {src:String(value || '')})}),
+          preview ? h('div', {className:'cms-image-block-preview'}, preview) : null,
+          h('div', {className:'cms-image-settings'},
+            h('label', {className:'cms-block-field'}, h('span', {}, 'Genişlik'), h('input', {type:'number', min:1, max:data.unit === '%' ? 100 : 4096, value:data.width ?? 100, onChange:event => this.updateData(index, {width:Number(event.target.value)})})),
+            h('label', {className:'cms-block-field'}, h('span', {}, 'Birim'), h('select', {value:data.unit || '%', onChange:event => this.updateData(index, {unit:event.target.value})}, h('option', {value:'%'}, '%'), h('option', {value:'px'}, 'px'))),
+            h('label', {className:'cms-block-field'}, h('span', {}, 'Hizalama'), h('select', {value:data.align || 'center', onChange:event => this.updateData(index, {align:event.target.value})}, h('option', {value:'left'}, 'Sol'), h('option', {value:'center'}, 'Orta'), h('option', {value:'right'}, 'Sağ'))),
+            h('label', {className:'cms-block-field'}, h('span', {}, 'Kırpma (varsayılan: oranı koru)'), h('select', {value:data.crop || 'none', onChange:event => this.updateData(index, {crop:event.target.value})}, h('option', {value:'none'}, 'Oranı koru'), h('option', {value:'square'}, 'Kare'), h('option', {value:'wide'}, '16:9'))),
+            h('label', {className:'cms-block-field'}, h('span', {}, 'Alt metin'), h('input', {type:'text', value:data.alt || '', onChange:event => this.updateData(index, {alt:event.target.value})})),
+            h('label', {className:'cms-block-field'}, h('span', {}, 'Açıklama (isteğe bağlı)'), h('input', {type:'text', value:data.caption || '', onChange:event => this.updateData(index, {caption:event.target.value})}))));
+      } else {
+        control = h('div', {className:'cms-code-block'},
+          h('label', {className:'cms-block-field'}, h('span', {}, 'Dil'), h('select', {value:data.language || 'text', onChange:event => this.updateData(index, {language:event.target.value})}, ...T.languages.map(language => h('option', {key:language, value:language}, language)))),
+          h('label', {className:'cms-block-field cms-wrap-option'}, h('input', {type:'checkbox', checked:!!data.wrap, onChange:event => this.updateData(index, {wrap:event.target.checked})}), h('span', {}, 'Uzun satırları sar')),
+          h('label', {className:'cms-block-field'}, h('span', {}, 'Kod (girintiler korunur)'), h('textarea', {value:data.code || '', rows:10, spellCheck:false, className:'cms-code-input', 'aria-label':'Kod alanı', onChange:event => this.updateData(index, {code:event.target.value})})));
+      }
+      return h('section', {className:'cms-content-block cms-block-' + block.type, key:block.key, 'data-block-type':block.type},
+        h('header', {className:'cms-block-header'}, h('strong', {}, blockLabel(block.type)),
+          h('div', {className:'cms-block-actions'},
+            h('button', {type:'button', disabled:index===0, 'aria-label':'Bloku yukarı taşı', onClick:() => this.move(index,-1)}, '↑'),
+            h('button', {type:'button', disabled:index===this.state.blocks.length-1, 'aria-label':'Bloku aşağı taşı', onClick:() => this.move(index,1)}, '↓'),
+            h('button', {type:'button', className:'cms-block-delete', onClick:() => this.remove(index)}, 'Sil'))),
+        control);
+    },
+    render() {
+      const children = [h('p', {className:'cms-block-help', key:'help'}, 'Blok sırası yayın sırasıdır. Medya sekmesi ayrı kütüphanedir; buradan seçtiğiniz görsel yalnızca bu bloğa eklenir.')];
+      this.state.blocks.forEach((block, index) => { children.push(this.renderGap(index), this.renderBlock(block, index)); });
+      children.push(this.renderGap(this.state.blocks.length));
+      const preview = h(BlockPreview, {...this.props, value:T.serializeDocument(this.state.blocks)});
+      return h('div', {className:'cms-block-editor'},
+        h('div', {className:'cms-mobile-tabs', role:'tablist'},
+          h('button', {type:'button', role:'tab', 'aria-selected':this.state.mobileTab==='edit', onClick:() => this.setState({mobileTab:'edit'})}, 'Düzenle'),
+          h('button', {type:'button', role:'tab', 'aria-selected':this.state.mobileTab==='preview', onClick:() => this.setState({mobileTab:'preview'})}, 'Önizleme')),
+        h('div', {className:'cms-block-editor-form', 'data-mobile-active':this.state.mobileTab==='edit'}, ...children),
+        h('div', {className:'cms-mobile-preview', 'data-mobile-active':this.state.mobileTab==='preview'}, preview));
+    }
+  });
+  const BlockPreview = createClass({
+    render() {
+      const blocks = T.parseDocument(typeof this.props.value === 'string' ? this.props.value : '');
+      return h('div', {className:'markdown-content cms-block-preview'}, ...blocks.map(block => {
+        if (block.type === 'text') return h(MarkdownPreview, {...this.props, value:block.value, key:block.key});
+        if (block.type === 'image') return imagePreviewNode(block.value, this.props.getAsset, block.key);
+        return codePreviewNode(block.value, block.key);
+      }));
+    }
+  });
+  function imagePreviewNode(value, getAsset, key) {
+    try {
+      const data = T.validate('image', value);
+      const src = getAsset ? String(getAsset(data.src)) : data.src;
+      T.safeImage(src, true);
+      return h('figure', {className:'content-image align-' + data.align + ' crop-' + data.crop, style:{width:data.width + data.unit}, key},
+        h('img', {src, alt:data.alt, loading:'lazy'}), data.caption ? h('figcaption', {}, data.caption) : null);
+    } catch (error) { return h('p', {key, role:'alert'}, error.message); }
+  }
+  function codePreviewNode(value, key) {
+    const data = T.validate('code', value);
+    return h('div', {className:'cms-preview-code', key},
+      h('div', {className:'code-toolbar'}, h('span', {}, data.language), h('button', {type:'button', onClick:event => T.copy(data.code, event.currentTarget)}, 'Kopyala')),
+      h('pre', {'data-wrap':String(data.wrap)}, h('code', {className:'language-' + data.language}, ...T.tokens(data.code, data.language).map((token, index) => h('span', {key:index, className:token.type ? 'tok-' + token.type : undefined}, token.text)))));
+  }
+  CMS.registerWidget('ordered-content', BlockEditor, BlockPreview);
+
   const Preview = createClass({
     getInitialState() { return {width: '100%', lang: 'en'}; },
     componentDidMount() {
@@ -149,12 +283,18 @@
   CMS.registerPreviewStyle('../content.css');
   CMS.registerPreviewTemplate('blog', Preview);
   CMS.registerPreviewTemplate('project', Preview);
-  CMS.registerPreviewTemplate('about', Preview);
+  CMS.registerPreviewTemplate('about_page', Preview);
 
   function validateEntry(entry) {
     const data = entry.get('data').toJS();
     const path = entry.get('path');
-    if (path && data.slug && path.split('/').pop() !== data.slug + '.json') {
+    if (!data.slug) {
+      const pathSlug = path && path.split('/').pop().replace(/\.json$/, '');
+      const titleSlug = String(data.title || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+      data.slug = pathSlug || titleSlug;
+    }
+    if (!/^[a-z0-9][a-z0-9_-]*$/.test(data.slug || '')) throw Error('Başlıktan geçerli slug üretilemedi; başlığı düzenleyin.');
+    if (path && path.split('/').pop() !== data.slug + '.json') {
       throw Error('Mevcut slug değiştirilemez; eski bağlantılar korunmalıdır.');
     }
     if (path && originalIds.get(path) && data.id !== originalIds.get(path)) {
@@ -167,7 +307,7 @@
       }
     }
     if (data.imageUrl) T.safeImage(data.imageUrl);
-    return entry.get('data');
+      return entry.get('data').set('slug', data.slug);
   }
   CMS.registerEventListener({name:'preSave', handler:({entry}) => {
     try {

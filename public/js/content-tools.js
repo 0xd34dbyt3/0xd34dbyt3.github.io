@@ -32,6 +32,55 @@
     // preview and preSave validate it before any HTML or repository write.
     return '```cms-' + kind + '\n' + JSON.stringify(value).replace(/</g, '\\u003c').replace(/`/g, '\\u0060') + '\n```';
   }
+  function newBlock(type) {
+    if (type === 'text') return {key: crypto.randomUUID(), type, value: ''};
+    if (type === 'image') return {key: crypto.randomUUID(), type, value: {src: '', alt: '', caption: '', width: 100, unit: '%', align: 'center', crop: 'none'}, raw: null};
+    if (type === 'code') return {key: crypto.randomUUID(), type, value: {code: '', language: 'text', wrap: false}, raw: null};
+    throw Error('Bilinmeyen içerik bloğu.');
+  }
+  function parseDocument(source) {
+    source = typeof source === 'string' ? source : '';
+    const blocks = [];
+    const pattern = /^```cms-(image|code)\r?\n([^\r\n]+)\r?\n```$/gm;
+    const matches = [];
+    for (const match of source.matchAll(pattern)) {
+      try {
+        const parsed = JSON.parse(match[2]);
+        // Empty image sources are a valid in-progress editor draft. Keep the typed
+        // block editable until preSave can report the missing upload without loss.
+        const draftImage = match[1] === 'image' && parsed && parsed.src === '';
+        const value = draftImage ? {...validate('image', {...parsed, src:'/draft-image'}), src:''} : validate(match[1], parsed);
+        matches.push({match, value});
+      }
+      catch { /* Keep malformed legacy text unchanged for visible repair. */ }
+    }
+    let cursor = 0;
+    for (const {match, value} of matches) {
+      const leading = source.slice(cursor, match.index);
+      if (leading && !/^\s*$/.test(leading)) blocks.push({key: crypto.randomUUID(), type: 'text', value:leading});
+      blocks.push({key: crypto.randomUUID(), type: match[1], value, raw:match[0], leading:/^\s*$/.test(leading) ? leading : ''});
+      cursor = match.index + match[0].length;
+    }
+    const trailing = source.slice(cursor);
+    if (trailing && /^\s*$/.test(trailing) && blocks.length && blocks[blocks.length - 1].type !== 'text') blocks[blocks.length - 1].trailing = trailing;
+    else if (trailing || !blocks.length) blocks.push({key: crypto.randomUUID(), type: 'text', value:trailing});
+    return blocks;
+  }
+  function serializeDocument(blocks) {
+    let result = '';
+    blocks.forEach((block, index) => {
+      let value = block.type === 'text' ? String(block.value ?? '') : (block.leading || '') + (block.raw || serializeDraft(block.type, block.value || {})) + (block.trailing || '');
+      const previous = blocks[index - 1];
+      const next = blocks[index + 1];
+      if (index && previous.type !== 'text' && block.type !== 'text' && !result.endsWith('\n') && !value.startsWith('\n')) result += '\n\n';
+      if (index && previous.type === 'text' && block.type !== 'text' && result && !result.endsWith('\n') && !value.startsWith('\n')) result += '\n\n';
+      if (index && previous.type !== 'text' && block.type === 'text' && value && !value.startsWith('\n')) value = '\n\n' + value;
+      result += value;
+      if (block.type !== 'text' && next && next.type !== 'text' && !result.endsWith('\n')) result += '\n\n';
+      if (block.type !== 'text' && next && next.type === 'text' && next.value && !next.value.startsWith('\n')) result += '\n\n';
+    });
+    return result;
+  }
   function tokens(code, language) {
     if (language === 'text') return [{text: code}];
     // Small conservative lexer: preserves every character; never interprets markup.
@@ -94,7 +143,7 @@
     if (!valid) throw Error('Dosya içeriği görsel türüyle eşleşmiyor.');
     return ext;
   }
-  const api = {languages, validate, safeImage, serialize, serializeDraft, tokens, copy, enhance, validateFile};
+  const api = {languages, validate, safeImage, serialize, serializeDraft, parseDocument, serializeDocument, newBlock, tokens, copy, enhance, validateFile};
   if (typeof module !== 'undefined') module.exports = api;
   root.ContentTools = api;
   if (root.document) {

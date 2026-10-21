@@ -28,3 +28,7 @@
 .markdown-content table { display: block; max-width: 100%; overflow-x: auto; }
 .cms-preview { padding: 16px; box-sizing: border-box; margin: auto; max-width: 100%; background: #090d12; }
 .cms-preview-controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; }
+.cms-block-preview, .cms-preview-code { min-width: 0; max-width: 100%; }
+.cms-preview-code { overflow: hidden; margin: 0 0 1rem; }
+.cms-preview-code .code-toolbar { border-radius: 6px 6px 0 0; }
+.cms-preview-code pre { margin: 0; border-top: 0; border-radius: 0 0 6px 6px; }

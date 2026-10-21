@@ -30,14 +30,14 @@ def bilingual(name, widget="string"):
 
 def config(site):
     post_fields = [
-        field("title", label="Ana başlık (EN)"), field("title_tr", required=False, label="Ana başlık (TR)"),
-        field("slug", pattern=["^[a-z0-9][a-z0-9_-]*$", "Küçük harf, rakam, tire ve alt çizgi kullanın."],
-              hint="Kalıcı adres; eski bağlantıları korumak için değiştirmeyin."),
-        field("id", required=False, hint="Eski MySQL ID. Aktarılan kayıtlarda değiştirmeyin; yeni içerikte boş bırakın."),
+        field("title", label="Ana başlık (EN)", hint="Yeni kayıtta kalıcı adres boş bırakılırsa bu başlıktan üretilir."),
+        field("title_tr", required=False, label="Ana başlık (TR)"),
         field("shortDesc", "text"), field("shortDesc_tr", "text", required=False),
-        field("fullDesc", "markdown", required=False), field("fullDesc_tr", "markdown", required=False),
-        field("imageUrl", "image", required=False, hint="Kapak görseli; içerik görsellerinden bağımsızdır. PNG/JPEG/GIF/WebP, en fazla 10 MiB."),
-        field("createdAt", "datetime", required=False), field("updatedAt", "datetime", required=False),
+        field("fullDesc", "ordered-content", required=False, hint="Metin, görsel ve kod bloklarını Buraya ekle düğmeleriyle sıralayın."),
+        field("fullDesc_tr", "ordered-content", required=False, hint="Metin, görsel ve kod bloklarını Buraya ekle düğmeleriyle sıralayın."),
+        field("imageUrl", "image", required=False, hint="Kapak görseli; içerik bloklarından bağımsızdır. PNG/JPEG/GIF/WebP, en fazla 10 MiB."),
+        field("slug", "hidden", required=False), field("id", "hidden", required=False),
+        field("createdAt", "hidden", required=False), field("updatedAt", "hidden", required=False),
     ]
     collections = []
     for kind, label in [("blog", "Blog"), ("project", "Projeler")]:

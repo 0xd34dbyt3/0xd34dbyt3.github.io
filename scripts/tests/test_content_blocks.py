@@ -77,11 +77,10 @@ class ContentBlockTests(unittest.TestCase):
             entry = next(f for f in about_fields if f['name'] == name)
             self.assertTrue(entry['allow_add'] and entry['allow_remove'] and entry['allow_reorder'])
         for collection in cms['collections'][:2]:
-            markdown = [f for f in collection['fields'] if f['widget'] == 'markdown']
-            self.assertEqual(len(markdown), 2)
-            for field in markdown:
-                self.assertEqual(field['editor_components'], ['managed-image', 'managed-code'])
-                self.assertEqual(field['modes'], ['rich_text'])
+            bodies = [f for f in collection['fields'] if f['name'] in ('fullDesc', 'fullDesc_tr')]
+            self.assertEqual(len(bodies), 2)
+            self.assertTrue(all(f['widget'] == 'ordered-content' for f in bodies))
+            self.assertEqual(next(f for f in collection['fields'] if f['name'] == 'imageUrl')['widget'], 'image')
 
 
 if __name__ == '__main__':
