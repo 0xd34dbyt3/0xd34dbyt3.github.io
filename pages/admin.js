@@ -100,19 +100,56 @@
     toPreview: codePreview
   });
 
-  const NativeImageControl = CMS.getWidget('image').control;
   const MarkdownPreview = CMS.getWidget('markdown').preview;
   const blockLabel = type => ({text:'Metin', image:'Görsel', code:'Kod'})[type];
   const BlockEditor = createClass({
     getInitialState() {
       this.lastValue = typeof this.props.value === 'string' ? this.props.value : '';
+      this.handledMediaPaths = new Map();
       return {blocks:T.parseDocument(this.lastValue), openGap:null, mobileTab:'edit'};
+    },
+    shouldComponentUpdate(nextProps, nextState) {
+      if (this.state !== nextState || nextProps.value !== this.props.value || nextProps.classNameWrapper !== this.props.classNameWrapper) return true;
+      const before = this.props.mediaPaths;
+      const after = nextProps.mediaPaths;
+      return this.state.blocks.some(block => block.type === 'image' &&
+        before && after && before.get('ordered-image-' + block.key) !== after.get('ordered-image-' + block.key));
     },
     componentWillReceiveProps(nextProps) {
       const incoming = typeof nextProps.value === 'string' ? nextProps.value : '';
       if (incoming !== this.lastValue) {
         this.lastValue = incoming;
-      this.setState({blocks:T.parseDocument(incoming), openGap:null, mobileTab:'edit'});
+        this.setState({blocks:T.parseDocument(incoming), openGap:null, mobileTab:'edit'});
+      }
+      // Decap stores a media-library result under the controlID supplied to
+      // onOpenMediaLibrary. The raw built-in image control's own random ID is
+      // not connected to this composite widget's value, so bridge that map to
+      // the block by its stable key here.
+      const paths = nextProps.mediaPaths;
+      if (paths && typeof paths.get === 'function') {
+        for (const block of this.state.blocks) {
+          if (block.type !== 'image') continue;
+          const controlID = 'ordered-image-' + block.key;
+          const selected = paths.get(controlID);
+          if (!selected) {
+            this.handledMediaPaths.delete(controlID);
+            continue;
+          }
+          if (this.handledMediaPaths.get(controlID) !== selected) {
+            this.handledMediaPaths.set(controlID, selected);
+            if (selected !== block.value.src) {
+              const blocks = this.state.blocks.map(item => item.key === block.key
+                ? {...item, value:{...item.value, src:String(selected)}, raw:null}
+                : item);
+              this.lastValue = T.serializeDocument(blocks);
+              this.setState({blocks});
+              nextProps.onChange(this.lastValue);
+              changed();
+            }
+            if (nextProps.onRemoveInsertedMedia) nextProps.onRemoveInsertedMedia(controlID);
+            break;
+          }
+        }
       }
     },
     commit(blocks) {
@@ -170,8 +207,12 @@
         let preview = null;
         try { if (src) preview = h('img', {src:T.safeImage(this.props.getAsset ? String(this.props.getAsset(src)) : src, true), alt:data.alt || ''}); }
         catch { preview = h('p', {role:'alert'}, 'Görsel adresi geçersiz.'); }
+        const controlID = 'ordered-image-' + block.key;
         control = h('div', {className:'cms-image-block'},
-          h(NativeImageControl, {...this.props, value:src, field, forID:'image-' + block.key, classNameWrapper:'cms-native-image-control', onChange:value => this.updateData(index, {src:String(value || '')})}),
+          h('button', {type:'button', className:'cms-native-image-control', onClick:() => this.props.onOpenMediaLibrary({
+            controlID, forImage:true, field, value:src, allowMultiple:false,
+            config:field.getIn(['options','media_library','config'])
+          })}, src ? 'Görseli değiştir' : 'Bir resim seçin'),
           preview ? h('div', {className:'cms-image-block-preview'}, preview) : null,
           h('div', {className:'cms-image-settings'},
             h('label', {className:'cms-block-field'}, h('span', {}, 'Genişlik'), h('input', {type:'number', min:1, max:data.unit === '%' ? 100 : 4096, value:data.width ?? 100, onChange:event => this.updateData(index, {width:Number(event.target.value)})})),
