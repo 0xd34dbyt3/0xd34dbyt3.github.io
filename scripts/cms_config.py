@@ -3,8 +3,11 @@
 
 def field(name, widget="string", **kw):
     if widget == "list":
-        kw = dict(allow_add=True, allow_remove=True, allow_reorder=True, collapsed=False,
-                  hint="Ekle/kaldır ile kayıt yönetin; sürükleme tutamacıyla sıralayın.", **kw)
+        kw.setdefault("allow_add", True)
+        kw.setdefault("allow_remove", True)
+        kw.setdefault("allow_reorder", True)
+        kw.setdefault("collapsed", True)
+        kw.setdefault("hint", "Ekle/kaldır ile kayıt yönetin; sürükleme tutamacıyla sıralayın.")
     if widget == "markdown":
         kw = dict(editor_components=["managed-image", "managed-code"],
                   modes=["rich_text"], sanitize_preview=True,
@@ -15,8 +18,8 @@ def field(name, widget="string", **kw):
         "shortDesc": "Kısa açıklama (EN)", "shortDesc_tr": "Kısa açıklama (TR)",
         "fullDesc": "Detay içeriği (EN)", "fullDesc_tr": "Detay içeriği (TR)",
         "imageUrl": "Kapak görseli", "whoami": "whoami",
-        "education": "education_log", "work": "WORK_EXPERIENCE",
-        "skills": "SKILL_MATRIX", "certs": "CERT_CHAIN",
+        "education": "Eğitim", "work": "İş Deneyimi",
+        "skills": "Beceriler", "certs": "Sertifikalar",
         "profile": "Profil", "core_focus": "Odak alanları", "items": "Beceriler",
         "en": "English", "tr": "Türkçe",
     }
@@ -25,7 +28,7 @@ def field(name, widget="string", **kw):
 
 
 def bilingual(name, widget="string"):
-    return field(name, "object", fields=[field("en", widget, required=False), field("tr", widget, required=False)])
+    return field(name, "object", collapsed=False, fields=[field("en", widget, required=False), field("tr", widget, required=False)])
 
 
 def config(site):
@@ -35,24 +38,32 @@ def config(site):
         field("shortDesc", "text"), field("shortDesc_tr", "text", required=False),
         field("fullDesc", "ordered-content", required=False, hint="Metin, görsel ve kod bloklarını Buraya ekle düğmeleriyle sıralayın."),
         field("fullDesc_tr", "ordered-content", required=False, hint="Metin, görsel ve kod bloklarını Buraya ekle düğmeleriyle sıralayın."),
-        field("imageUrl", "image", required=False, hint="Kapak görseli; içerik bloklarından bağımsızdır. PNG/JPEG/GIF/WebP, en fazla 10 MiB."),
+        field("imageUrl", "image", required=False, label="Kapak görseli", hint="Kapak görseli; içerik bloklarından bağımsızdır. PNG/JPEG/GIF/WebP, en fazla 10 MiB."),
         field("slug", "hidden", required=False), field("id", "hidden", required=False),
         field("createdAt", "hidden", required=False), field("updatedAt", "hidden", required=False),
     ]
+    blog_fields = list(post_fields)
+    blog_fields[7] = field("slug", label="Kalıcı bağlantı", required=False,
+                           hint="Mevcut yazıların bağlantısı korunur. Yeni yazıda boş bırakılırsa başlıktan üretilir.")
     collections = []
     for kind, label in [("blog", "Blog"), ("project", "Projeler")]:
         collections.append(dict(name=kind, label=label, folder=f"content/{kind}", format="json", extension="json",
                                 create=True, delete=True, identifier_field="slug", slug="{{fields.slug}}",
-                                preview_path=kind + "/{{fields.slug}}/", fields=post_fields,
+                                preview_path=kind + "/{{fields.slug}}/", fields=blog_fields if kind == "blog" else post_fields,
                                 description="Kaydetmek public depoya commit oluşturur. Özel taslak veya kişisel veri kaydetmeyin."))
-    about = [bilingual("whoami", "text"), field("profile", "object", fields=[
+    about = [bilingual("whoami", "text"), field("profile", "object", collapsed=True, summary="{{fields.name}}", fields=[
         field("name"), field("status", required=False), field("location", required=False), bilingual("role"),
-        field("core_focus", "list", field=bilingual("item"), required=False), field("image", "image", required=False,
+        field("core_focus", "list", field=bilingual("item"), required=False,
+              summary="{{fields.item.en}}"), field("image", "image", required=False,
               media_processing=dict(enabled=True, quality=85, strip_metadata=True, width=500))]),
-        field("education", "list", fields=[bilingual("institution"), bilingual("detail", "text")], required=False),
-        field("work", "list", fields=[bilingual("title"), bilingual("company"), field("duration", required=False), bilingual("desc", "text")], required=False),
-        field("skills", "list", fields=[bilingual("category"), field("items", "list", field=bilingual("item"))], required=False),
-        field("certs", "list", fields=[bilingual("title"), bilingual("desc", "text")], required=False)]
+        field("education", "list", fields=[bilingual("institution"), bilingual("detail", "text")], required=False,
+              summary="{{fields.institution.en}}"),
+        field("work", "list", fields=[bilingual("title"), bilingual("company"), field("duration", required=False), bilingual("desc", "text")], required=False,
+              summary="{{fields.company.en}} — {{fields.title.en}}"),
+        field("skills", "list", fields=[bilingual("category"), field("items", "list", field=bilingual("item"),
+              summary="{{fields.item.en}}")], required=False, summary="{{fields.category.en}}"),
+        field("certs", "list", fields=[bilingual("title"), bilingual("desc", "text")], required=False,
+              summary="{{fields.title.en}}")]
     collections.append(dict(name="about_page", label="Hakkımda", files=[dict(name="about", label="Hakkımda", file="content/about.json", fields=about)]))
     collection_names = [collection["name"] for collection in collections]
     if len(collection_names) != len(set(collection_names)):
