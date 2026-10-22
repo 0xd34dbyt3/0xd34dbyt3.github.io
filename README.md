@@ -6,4 +6,4 @@ Build: `python3 -m pip install -r requirements-pages.txt` then `python3 scripts/
 
 The current content preserves text already embedded in the public HTML files. It is not a verified MySQL export; see content/migration.json.
 
-GitHub Pages source: GitHub Actions. OAuth is not required for visitor publication. Admin is explicitly disabled pending the separate HTTPS OAuth broker described in oauth/README.md; enable adminEnabled and set oauthOrigin in site.config.json only after setup. No credentials belong in this repository.
+GitHub Pages source: GitHub Actions. OAuth is not required for visitor publication. The admin is enabled and uses the separate HTTPS OAuth broker described in `oauth/README.md`; its `public_repo` token scope is not limited to this repository, so use a dedicated editor account and revoke unused authorizations. No credentials belong in this repository.
