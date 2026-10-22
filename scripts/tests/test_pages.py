@@ -4,8 +4,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from build_pages import ROOT, build, markdown_html, base_path, validate_about, read_json, audit
+from build_pages import ROOT, build, markdown_html, base_path, validate_about, read_json, audit, validate_image, get_feeds
 from bs4 import BeautifulSoup
 
 class PagesTests(unittest.TestCase):
@@ -139,5 +140,24 @@ class PagesTests(unittest.TestCase):
         cache['news']['items'][0]['password'] = 'synthetic-private-field'
         self.write('feeds.json', cache)
         with self.assertRaises(ValueError): build(self.root / 'private-cache', self.content, self.site)
+
+    def test_image_dimensions_reject_decompression_bomb_headers(self):
+        def png(width, height):
+            return b'\x89PNG\r\n\x1a\n' + b'\0' * 8 + width.to_bytes(4, 'big') + height.to_bytes(4, 'big')
+        self.assertEqual(validate_image(png(320, 200), '.png'), (320, 200))
+        for dimensions in [(8193, 1), (7000, 7000), (0, 10)]:
+            with self.assertRaises(ValueError):
+                validate_image(png(*dimensions), '.png')
+
+    def test_feed_redirect_outside_allowlist_fails_closed(self):
+        class Redirected:
+            def __enter__(self): return self
+            def __exit__(self, *_): pass
+            def geturl(self): return 'https://attacker.example/feed'
+            def read(self, _): return b'<rss><channel></channel></rss>'
+        with patch('build_pages.urllib.request.urlopen', return_value=Redirected()):
+            feeds = get_feeds(self.content, refresh=True)
+        self.assertEqual(feeds['news']['status'], 'unavailable')
+        self.assertEqual(feeds['cve']['status'], 'unavailable')
 
 if __name__ == '__main__': unittest.main()

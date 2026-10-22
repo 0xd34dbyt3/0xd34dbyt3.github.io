@@ -63,9 +63,17 @@ test('copy success and failure are visible', async () => {
   assert.match(button.textContent, /Kopyalanamadı/);
 });
 test('upload checks size, extension and file signature', async () => {
-  const file = (name, bytes) => new File([new Uint8Array(bytes)], name);
-  assert.equal(await T.validateFile(file('evil name.PNG',[137,80,78,71,13,10,26,10])), 'png');
+  const png = (width, height) => {
+    const bytes = [137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82];
+    for (const value of [width, height]) bytes.push((value >>> 24) & 255, (value >>> 16) & 255, (value >>> 8) & 255, value & 255);
+    return bytes;
+  };
+  const file = (name, bytes, type = '') => new File([new Uint8Array(bytes)], name, {type});
+  assert.equal(await T.validateFile(file('evil name.PNG',png(320, 200), 'image/png')), 'png');
   await assert.rejects(T.validateFile(file('x.svg',[1])), /PNG/);
   await assert.rejects(T.validateFile(file('x.png',[1,2,3])), /eşleşmiyor/);
+  await assert.rejects(T.validateFile(file('x.png',png(320, 200), 'image/jpeg')), /MIME/);
+  await assert.rejects(T.validateFile(file('x.png',png(8193, 1), 'image/png')), /güvenli sınırı/);
+  await assert.rejects(T.validateFile(file('x.png',png(7000, 7000), 'image/png')), /güvenli sınırı/);
   await assert.rejects(T.validateFile({name:'x.png',size:11*1024*1024}), /10 MiB/);
 });

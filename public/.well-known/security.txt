@@ -1,0 +1,4 @@
+Contact: mailto:muhammedfatihozturk01@gmail.com
+Preferred-Languages: tr, en
+Canonical: https://0xd34dbyt3.github.io/.well-known/security.txt
+Expires: 2027-10-22T00:00:00Z

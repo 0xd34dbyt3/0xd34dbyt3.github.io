@@ -11,11 +11,11 @@ import re
 import shutil
 import sys
 import urllib.request
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import urlsplit, unquote
 
 import bleach
+from defusedxml import ElementTree as ET
 from bleach.css_sanitizer import CSSSanitizer
 import mistune
 from bs4 import BeautifulSoup
@@ -24,10 +24,12 @@ from content_blocks import expand_blocks
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGES = ["index.html", "about_me.html", "blog.html", "projects.html", "detail.html"]
-ASSETS = ["styles.css", "script.js", "js/vortex-bg.js", "content.css", "js/content-tools.js", "assets/background.png", "assets/project-icon.png", "assets/user-icon.png"]
+ASSETS = ["styles.css", "script.js", "js/vortex-bg.js", "content.css", "js/content-tools.js", "assets/background.png", "assets/project-icon.png", "assets/user-icon.png", ".well-known/security.txt"]
 POST_FIELDS = {"id", "slug", "title", "title_tr", "shortDesc", "shortDesc_tr", "fullDesc", "fullDesc_tr", "imageUrl", "createdAt", "updatedAt"}
 TAGS = set(bleach.sanitizer.ALLOWED_TAGS) | {"p", "h1", "h2", "h3", "h4", "h5", "h6", "pre", "code", "img", "hr", "br", "table", "thead", "tbody", "tr", "th", "td", "del", "div", "span", "details", "summary"}
 MARKDOWN = mistune.create_markdown(escape=False, plugins=['strikethrough', 'table', 'url'])
+MAX_IMAGE_DIMENSION = 8192
+MAX_IMAGE_PIXELS = 40_000_000
 
 
 def read_json(path):
@@ -73,6 +75,58 @@ def local_url(value, base):
     if path.startswith("uploads/"):
         path = "media/" + path[len("uploads/"):]
     return base + path + ("?" + parsed.query if parsed.query else "") + ("#" + parsed.fragment if parsed.fragment else "")
+
+
+def image_dimensions(raw, suffix):
+    """Read dimensions without decoding attacker-controlled compressed pixels."""
+    suffix = suffix.lower()
+    if suffix == ".png" and len(raw) >= 24 and raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        return int.from_bytes(raw[16:20], "big"), int.from_bytes(raw[20:24], "big")
+    if suffix == ".gif" and len(raw) >= 10 and raw.startswith((b"GIF87a", b"GIF89a")):
+        return int.from_bytes(raw[6:8], "little"), int.from_bytes(raw[8:10], "little")
+    if suffix in {".jpg", ".jpeg"} and raw.startswith(b"\xff\xd8\xff"):
+        offset = 2
+        sof = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
+        while offset + 4 <= len(raw):
+            if raw[offset] != 0xFF:
+                offset += 1
+                continue
+            while offset < len(raw) and raw[offset] == 0xFF:
+                offset += 1
+            if offset >= len(raw):
+                break
+            marker = raw[offset]
+            offset += 1
+            if marker in {0x01, 0xD8, 0xD9} or 0xD0 <= marker <= 0xD7:
+                continue
+            if offset + 2 > len(raw):
+                break
+            length = int.from_bytes(raw[offset:offset + 2], "big")
+            if length < 2 or offset + length > len(raw):
+                break
+            if marker in sof and length >= 7:
+                return int.from_bytes(raw[offset + 5:offset + 7], "big"), int.from_bytes(raw[offset + 3:offset + 5], "big")
+            offset += length
+    if suffix == ".webp" and len(raw) >= 30 and raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        kind = raw[12:16]
+        if kind == b"VP8X":
+            return 1 + int.from_bytes(raw[24:27], "little"), 1 + int.from_bytes(raw[27:30], "little")
+        if kind == b"VP8L" and len(raw) >= 25 and raw[20] == 0x2F:
+            b1, b2, b3, b4 = raw[21:25]
+            return 1 + (b1 | ((b2 & 0x3F) << 8)), 1 + ((b2 >> 6) | (b3 << 2) | ((b4 & 0x0F) << 10))
+        if kind == b"VP8 " and raw[23:26] == b"\x9d\x01\x2a":
+            return int.from_bytes(raw[26:28], "little") & 0x3FFF, int.from_bytes(raw[28:30], "little") & 0x3FFF
+    return None
+
+
+def validate_image(raw, suffix):
+    dimensions = image_dimensions(raw, suffix)
+    if not dimensions or not all(dimensions):
+        raise ValueError("Image signature or dimensions rejected")
+    width, height = dimensions
+    if width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION or width * height > MAX_IMAGE_PIXELS:
+        raise ValueError("Image dimensions exceed the safe limit")
+    return dimensions
 
 
 def markdown_html(source, base):
@@ -257,16 +311,23 @@ def get_feeds(content, refresh):
         if refresh:
             try:
                 url = "https://feeds.feedburner.com/TheHackersNews" if kind == "news" else "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+                allowed_source_hosts = {"feeds.feedburner.com"} if kind == "news" else {"www.cisa.gov"}
                 with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "StaticPortfolioBuild/1.0"}), timeout=8) as response:
+                    if urlsplit(response.geturl()).hostname not in allowed_source_hosts:
+                        raise ValueError("Unexpected feed redirect")
                     raw = response.read(8_000_001)
                 if len(raw) > 8_000_000:
                     raise ValueError("Feed too large")
                 if kind == "news":
                     items = [dict(title=n.findtext("title", ""), url=n.findtext("link", ""), source="The Hacker News", date=n.findtext("pubDate", "")) for n in ET.fromstring(raw).findall(".//item")[:6]]
+                    if any(urlsplit(i["url"]).hostname not in {"thehackernews.com", "www.thehackernews.com"} for i in items):
+                        raise ValueError("Unexpected news link host")
                 else:
                     rows = sorted(json.loads(raw)["vulnerabilities"], key=lambda v: v.get("dateAdded", ""), reverse=True)[:6]
                     items = [dict(id=v["cveID"], title=v["vulnerabilityName"], url="https://nvd.nist.gov/vuln/detail/" + v["cveID"], source="CISA KEV", date=v["dateAdded"]) for v in rows]
-                if not items or any(not i["url"].startswith("https://") for i in items):
+                if (not items or any(urlsplit(i["url"]).scheme != "https" or len(i["url"]) > 2048
+                                    or len(i.get("title", "")) > 500 or len(i.get("date", "")) > 200
+                                    or len(i.get("source", "")) > 100 for i in items)):
                     raise ValueError("Invalid feed")
                 data = dict(items=items, updatedAt=dt.datetime.now(dt.timezone.utc).isoformat(), status="snapshot")
             except Exception:
@@ -302,7 +363,8 @@ def audit(output, base):
         if not path.is_file():
             continue
         rel = path.relative_to(output)
-        if path.is_symlink() or (path.name != ".nojekyll" and (path.suffix not in allowed or any(p.startswith(".") for p in rel.parts))):
+        allowed_hidden = rel.as_posix() in {".nojekyll", ".well-known/security.txt"}
+        if path.is_symlink() or (not allowed_hidden and (path.suffix not in allowed or any(p.startswith(".") for p in rel.parts))):
             raise ValueError("Forbidden output file: " + str(rel))
         if any(p in {"server", "node_modules", ".git", ".aws", ".codex"} for p in rel.parts):
             raise ValueError("Private directory in output")
@@ -433,9 +495,10 @@ def build(output, content=ROOT / "content", site=None, refresh=False, release=Fa
         raw = source.read_bytes()
         if len(raw) > 10 * 1024 * 1024:
             raise ValueError("Görsel 10 MiB sınırını aşıyor: " + name)
-        valid = raw.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"GIF87a", b"GIF89a")) or (raw[:4] == b"RIFF" and raw[8:12] == b"WEBP")
-        if not valid:
-            raise ValueError("Image signature rejected: " + name)
+        try:
+            validate_image(raw, source.suffix)
+        except ValueError as error:
+            raise ValueError(str(error) + ": " + name) from error
         dest = output / "media" / name
         dest.parent.mkdir(exist_ok=True)
         shutil.copyfile(source, dest)
