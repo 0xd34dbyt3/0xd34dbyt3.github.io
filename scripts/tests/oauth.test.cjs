@@ -2,7 +2,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { createHandler, configuration } = require('../../oauth/server.cjs');
-const env = { GITHUB_CLIENT_ID: 'test-client', GITHUB_CLIENT_SECRET: 'test-secret-not-real', CMS_ORIGIN: 'https://cms.example', OAUTH_ORIGIN: 'https://auth.example', GITHUB_REPOSITORY: 'test/repo' };
+const env = { GITHUB_CLIENT_ID: 'testclient', GITHUB_CLIENT_SECRET: 'test-secret-not-real', CMS_ORIGIN: 'https://cms.example', OAUTH_ORIGIN: 'https://auth.example', GITHUB_REPOSITORY: 'test/repo' };
 function response() {
     return { headers: {}, status: 200, body: '', headersSent: false,
         setHeader(k, v) { this.headers[k] = v; },
@@ -21,6 +21,8 @@ test('configuration fails closed', () => {
     assert.throws(() => configuration({}));
     assert.throws(() => configuration({ ...env, CMS_ORIGIN: 'http://cms.example' }));
     assert.throws(() => configuration({ ...env, OAUTH_ORIGIN: 'https://auth.example/path' }));
+    assert.throws(() => configuration({ ...env, GITHUB_CLIENT_ID: ' test-client' }));
+    assert.throws(() => configuration({ ...env, GITHUB_CLIENT_SECRET: 'test secret' }));
 });
 test('provider/site validation and no state bypass', async () => {
     const handler = createHandler(env, () => { throw Error('must not call GitHub'); });
@@ -63,4 +65,30 @@ test('read-only GitHub accounts never receive a token', async () => {
     const callback = await call(handler, '/callback?code=test&state=' + state, cookie);
     assert.equal(callback.status, 403);
     assert.ok(!callback.body.includes('mock-token'));
+});
+
+test('Worker configuration rejects whitespace and Durable Object rate limits state creation', async () => {
+    const { config, OAuthStateStore } = await import('../../oauth/worker.mjs');
+    assert.throws(() => config({ ...env, GITHUB_CLIENT_ID: ' test-client' }));
+    const values = new Map();
+    const txn = {
+        async list() { return new Map(values); },
+        async get(key) { return values.get(key); },
+        async put(key, value) { values.set(key, value); },
+        async delete(key) { values.delete(key); }
+    };
+    const store = new OAuthStateStore({ storage: { transaction: fn => fn(txn) } });
+    const clientKey = 'a'.repeat(32);
+    const request = (path, body) => new Request('https://oauth-state.internal' + path, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    });
+    const record = n => ({state:n.toString(16).padStart(64, '0'), verifier:'v'.repeat(43), expires:Date.now()+300000, clientKey});
+    const first = record(1);
+    assert.equal((await store.fetch(request('/create', first))).status, 201);
+    for (let n = 2; n <= 10; n++) assert.equal((await store.fetch(request('/create', record(n)))).status, 201);
+    assert.equal((await store.fetch(request('/create', record(11)))).status, 429);
+    const consumed = await (await store.fetch(request('/consume', {state:first.state}))).json();
+    assert.equal(consumed.verifier, 'v'.repeat(43));
+    assert.equal(consumed.expires, first.expires);
+    assert.deepEqual(await (await store.fetch(request('/consume', {state:first.state}))).json(), {});
 });

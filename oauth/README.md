@@ -43,6 +43,11 @@ OAuth state Secure/HttpOnly/SameSite=Lax cookie + tek kullanımlık kayıt ile d
 PKCE S256 de kullanılır. `Cross-Origin-Opener-Policy: same-origin` gibi popup opener'ı
 kesen bir başlık eklemeyin.
 
+Worker ayrıca `CF-Connecting-IP` değerinin yalnız SHA-256 özetini Durable Object içinde
+bir dakika tutarak istemci başına dakikada 10 state üretimi sınırı uygular. Bu uygulama
+sınırı, Cloudflare rate limiting/WAF kuralının yerine geçmez; dağıtım ayarında ikinci
+katman olarak aynı uç ayrıca sınırlandırılmalıdır.
+
 Yerel birim testleri gerçek GitHub girişinin yerine geçmez. Kurulumdan sonra
 yetkili hesapla giriş, yetkisiz hesap reddi, görsel/yazı ekleme-düzenleme-silme,
 Actions çıktısı ve oturum iptali uçtan uca kontrol edilmelidir.

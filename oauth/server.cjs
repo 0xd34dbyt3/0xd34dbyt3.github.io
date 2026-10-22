@@ -8,7 +8,9 @@ const crypto = require('node:crypto');
 function configuration(env = process.env) {
     for (const key of ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'CMS_ORIGIN', 'OAUTH_ORIGIN', 'GITHUB_REPOSITORY']) {
         if (!env[key] || /GITHUB_OWNER|example\.invalid/.test(env[key])) throw new Error('Missing OAuth configuration: ' + key);
+        if (env[key] !== env[key].trim()) throw new Error('Invalid OAuth configuration: ' + key);
     }
+    if (!/^[A-Za-z0-9]+$/.test(env.GITHUB_CLIENT_ID) || !/^\S+$/.test(env.GITHUB_CLIENT_SECRET)) throw new Error('Invalid OAuth credentials');
     for (const key of ['CMS_ORIGIN', 'OAUTH_ORIGIN']) {
         const url = new URL(env[key]);
         if (url.protocol !== 'https:' || url.origin !== env[key]) throw new Error(key + ' must be an HTTPS origin without trailing slash/path');
@@ -31,6 +33,7 @@ function createHandler(env, request = fetch) {
         const fail = (code, message) => { res.writeHead(code, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end(message); };
         try {
             if (req.method !== 'GET') return fail(405, 'Method not allowed');
+            if (req.url.length > 4096) return fail(414, 'Request URI too long');
             const url = new URL(req.url, cfg.OAUTH_ORIGIN);
             for (const [state, record] of pending) if (record.expires < Date.now()) pending.delete(state);
             if (url.pathname === '/auth') {
@@ -52,7 +55,7 @@ function createHandler(env, request = fetch) {
             pending.delete(state);
             res.setHeader('Set-Cookie', `${cookieName}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`);
             const code = url.searchParams.get('code');
-            if (!code || url.searchParams.has('error')) return fail(400, 'GitHub authorization was not completed');
+            if (!code || code.length > 2048 || url.searchParams.has('error')) return fail(400, 'GitHub authorization was not completed');
             const tokenResponse = await request('https://github.com/login/oauth/access_token', {
                 method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify({ client_id: cfg.GITHUB_CLIENT_ID, client_secret: cfg.GITHUB_CLIENT_SECRET, code, redirect_uri: cfg.OAUTH_ORIGIN + '/callback', code_verifier: transaction.verifier }),

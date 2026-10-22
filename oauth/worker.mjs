@@ -2,10 +2,12 @@ const COOKIE = '__Host-decap_state';
 const STATE_TTL = 5 * 60 * 1000;
 const MAX_PENDING = 1000;
 
-function config(env) {
+export function config(env) {
   for (const key of ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'CMS_ORIGIN', 'OAUTH_ORIGIN', 'GITHUB_REPOSITORY']) {
     if (!env[key] || /GITHUB_OWNER|example\.invalid/.test(env[key])) throw new Error('Invalid configuration');
+    if (env[key] !== env[key].trim()) throw new Error('Invalid configuration');
   }
+  if (!/^[A-Za-z0-9]+$/.test(env.GITHUB_CLIENT_ID) || !/^\S+$/.test(env.GITHUB_CLIENT_SECRET)) throw new Error('Invalid configuration');
   for (const key of ['CMS_ORIGIN', 'OAUTH_ORIGIN']) {
     const url = new URL(env[key]);
     if (url.protocol !== 'https:' || url.origin !== env[key]) throw new Error('Invalid configuration');
@@ -56,13 +58,16 @@ export default {
       const url = new URL(request.url);
       if (url.origin !== cfg.OAUTH_ORIGIN) return fail(404, 'Not found');
       if (request.method !== 'GET') return fail(405, 'Method not allowed');
+      if (request.url.length > 4096) return fail(414, 'Request URI too long');
 
       if (url.pathname === '/auth') {
         if (url.searchParams.get('provider') !== 'github' || url.searchParams.get('site_id') !== new URL(cfg.CMS_ORIGIN).hostname) return fail(400, 'Invalid OAuth request');
         const state = Array.from(randomBytes(32), byte => byte.toString(16).padStart(2, '0')).join('');
         const verifier = b64url(randomBytes(32));
         const expires = Date.now() + STATE_TTL;
-        const stored = await stateOperation(env, 'create', { state, verifier, expires });
+        const address = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const clientKey = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(address)))).slice(0, 32);
+        const stored = await stateOperation(env, 'create', { state, verifier, expires, clientKey });
         if (stored.status === 429) return fail(429, 'Try again later');
         if (!stored.ok) return fail(502, 'OAuth service unavailable');
         const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
@@ -80,7 +85,7 @@ export default {
       const clearCookie = `${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
       if (!transaction.verifier) return fail(400, 'Invalid or expired OAuth state');
       const code = url.searchParams.get('code');
-      if (!code || url.searchParams.has('error')) return fail(400, 'GitHub authorization was not completed', { 'Set-Cookie': clearCookie });
+      if (!code || code.length > 2048 || url.searchParams.has('error')) return fail(400, 'GitHub authorization was not completed', { 'Set-Cookie': clearCookie });
 
       const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
         method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -133,15 +138,20 @@ export class OAuthStateStore {
     let body;
     try { body = await request.json(); } catch { return new Response('Bad request', { status: 400 }); }
     if (operation === '/create') {
-      if (!/^[a-f0-9]{64}$/.test(body.state || '') || !/^[A-Za-z0-9_-]{43}$/.test(body.verifier || '') || !Number.isFinite(body.expires)) return new Response('Bad request', { status: 400 });
+      if (!/^[a-f0-9]{64}$/.test(body.state || '') || !/^[A-Za-z0-9_-]{43}$/.test(body.verifier || '') || !/^[A-Za-z0-9_-]{32}$/.test(body.clientKey || '') || !Number.isFinite(body.expires)) return new Response('Bad request', { status: 400 });
       const created = await this.ctx.storage.transaction(async txn => {
-        const entries = await txn.list({ prefix: 'state:' });
+        const now = Date.now();
+        const entries = await txn.list();
         let active = 0;
         for (const [key, value] of entries) {
-          if (value.expires <= Date.now()) await txn.delete(key);
-          else active++;
+          if (value.expires <= now) await txn.delete(key);
+          else if (key.startsWith('state:')) active++;
         }
         if (active >= MAX_PENDING) return false;
+        const rateKey = 'rate:' + body.clientKey;
+        const rate = await txn.get(rateKey);
+        if (rate && rate.expires > now && rate.count >= 10) return false;
+        await txn.put(rateKey, { count: rate && rate.expires > now ? rate.count + 1 : 1, expires: now + 60_000 });
         await txn.put('state:' + body.state, { verifier: body.verifier, expires: body.expires });
         return true;
       });
