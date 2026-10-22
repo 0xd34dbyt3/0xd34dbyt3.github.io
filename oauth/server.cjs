@@ -6,11 +6,12 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 
 function configuration(env = process.env) {
-    for (const key of ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'CMS_ORIGIN', 'OAUTH_ORIGIN', 'GITHUB_REPOSITORY']) {
+    for (const key of ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_ALLOWED_USER_ID', 'CMS_ORIGIN', 'OAUTH_ORIGIN', 'GITHUB_REPOSITORY']) {
         if (!env[key] || /GITHUB_OWNER|example\.invalid/.test(env[key])) throw new Error('Missing OAuth configuration: ' + key);
         if (env[key] !== env[key].trim()) throw new Error('Invalid OAuth configuration: ' + key);
     }
     if (!/^[A-Za-z0-9]+$/.test(env.GITHUB_CLIENT_ID) || !/^\S+$/.test(env.GITHUB_CLIENT_SECRET)) throw new Error('Invalid OAuth credentials');
+    if (!/^[1-9][0-9]*$/.test(env.GITHUB_ALLOWED_USER_ID)) throw new Error('Invalid allowed GitHub user ID');
     for (const key of ['CMS_ORIGIN', 'OAUTH_ORIGIN']) {
         const url = new URL(env[key]);
         if (url.protocol !== 'https:' || url.origin !== env[key]) throw new Error(key + ' must be an HTTPS origin without trailing slash/path');
@@ -63,12 +64,18 @@ function createHandler(env, request = fetch) {
             });
             const data = await tokenResponse.json();
             if (!tokenResponse.ok || typeof data.access_token !== 'string' || data.error) return fail(401, 'GitHub token exchange failed');
-            // Authenticate AND authorize this exact repository before sending a token to Decap.
+            // Authenticate this immutable numeric account ID before checking the exact repository.
+            const githubHeaders = { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + data.access_token, 'User-Agent': 'DecapPortfolioOAuth' };
+            const userResponse = await request('https://api.github.com/user', {
+                headers: githubHeaders, signal: AbortSignal.timeout(10000)
+            });
+            const user = await userResponse.json();
+            if (!userResponse.ok || String(user.id) !== cfg.GITHUB_ALLOWED_USER_ID) return fail(403, 'Authorized GitHub account required');
             const repoResponse = await request('https://api.github.com/repos/' + cfg.GITHUB_REPOSITORY, {
-                headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + data.access_token, 'User-Agent': 'DecapPortfolioOAuth' }, signal: AbortSignal.timeout(10000)
+                headers: githubHeaders, signal: AbortSignal.timeout(10000)
             });
             const repo = await repoResponse.json();
-            if (!repoResponse.ok || !repo.permissions?.push || repo.private) return fail(403, 'Public repository write permission required');
+            if (!repoResponse.ok || repo.full_name !== cfg.GITHUB_REPOSITORY || !repo.permissions?.push || repo.private) return fail(403, 'Public repository write permission required');
             const nonce = crypto.randomBytes(24).toString('base64');
             res.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonce}'; frame-ancestors 'none'; base-uri 'none'`);
             res.setHeader('Content-Type', 'text/html; charset=utf-8');

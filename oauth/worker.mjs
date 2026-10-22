@@ -3,11 +3,12 @@ const STATE_TTL = 5 * 60 * 1000;
 const MAX_PENDING = 1000;
 
 export function config(env) {
-  for (const key of ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'CMS_ORIGIN', 'OAUTH_ORIGIN', 'GITHUB_REPOSITORY']) {
+  for (const key of ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_ALLOWED_USER_ID', 'CMS_ORIGIN', 'OAUTH_ORIGIN', 'GITHUB_REPOSITORY']) {
     if (!env[key] || /GITHUB_OWNER|example\.invalid/.test(env[key])) throw new Error('Invalid configuration');
     if (env[key] !== env[key].trim()) throw new Error('Invalid configuration');
   }
   if (!/^[A-Za-z0-9]+$/.test(env.GITHUB_CLIENT_ID) || !/^\S+$/.test(env.GITHUB_CLIENT_SECRET)) throw new Error('Invalid configuration');
+  if (!/^[1-9][0-9]*$/.test(env.GITHUB_ALLOWED_USER_ID)) throw new Error('Invalid configuration');
   for (const key of ['CMS_ORIGIN', 'OAUTH_ORIGIN']) {
     const url = new URL(env[key]);
     if (url.protocol !== 'https:' || url.origin !== env[key]) throw new Error('Invalid configuration');
@@ -49,6 +50,10 @@ async function stateOperation(env, operation, payload) {
 function cookieValue(header) {
   return (header || '').split(';').map(value => value.trim())
     .find(value => value.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1) || '';
+}
+export function authorizedGitHubIdentity(userResponse, user, repoResponse, repo, cfg) {
+  return userResponse.ok && String(user.id) === cfg.GITHUB_ALLOWED_USER_ID && repoResponse.ok &&
+    repo.full_name === cfg.GITHUB_REPOSITORY && repo.permissions?.push === true && repo.private === false;
 }
 
 export default {
@@ -94,12 +99,18 @@ export default {
       });
       const tokenData = await tokenResponse.json();
       if (!tokenResponse.ok || typeof tokenData.access_token !== 'string' || tokenData.error) return fail(401, 'GitHub token exchange failed', { 'Set-Cookie': clearCookie });
+      const githubHeaders = { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + tokenData.access_token, 'User-Agent': 'DecapPortfolioOAuth' };
+      const userResponse = await fetch('https://api.github.com/user', {
+        headers: githubHeaders, signal: AbortSignal.timeout(10000)
+      });
+      const user = await userResponse.json();
+      if (!userResponse.ok || String(user.id) !== cfg.GITHUB_ALLOWED_USER_ID) return fail(403, 'Authorized GitHub account required', { 'Set-Cookie': clearCookie });
       const repoResponse = await fetch('https://api.github.com/repos/' + cfg.GITHUB_REPOSITORY, {
-        headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + tokenData.access_token, 'User-Agent': 'DecapPortfolioOAuth' },
+        headers: githubHeaders,
         signal: AbortSignal.timeout(10000)
       });
       const repo = await repoResponse.json();
-      if (!repoResponse.ok || !repo.permissions?.push || repo.private) return fail(403, 'Public repository write permission required', { 'Set-Cookie': clearCookie });
+      if (!authorizedGitHubIdentity(userResponse, user, repoResponse, repo, cfg)) return fail(403, 'Public repository write permission required', { 'Set-Cookie': clearCookie });
 
       const nonce = b64url(randomBytes(24));
       const origin = jsonScript(cfg.CMS_ORIGIN);

@@ -2,7 +2,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { createHandler, configuration } = require('../../oauth/server.cjs');
-const env = { GITHUB_CLIENT_ID: 'testclient', GITHUB_CLIENT_SECRET: 'test-secret-not-real', CMS_ORIGIN: 'https://cms.example', OAUTH_ORIGIN: 'https://auth.example', GITHUB_REPOSITORY: 'test/repo' };
+const env = { GITHUB_CLIENT_ID: 'testclient', GITHUB_CLIENT_SECRET: 'test-secret-not-real', GITHUB_ALLOWED_USER_ID: '12345', CMS_ORIGIN: 'https://cms.example', OAUTH_ORIGIN: 'https://auth.example', GITHUB_REPOSITORY: 'test/repo' };
 function response() {
     return { headers: {}, status: 200, body: '', headersSent: false,
         setHeader(k, v) { this.headers[k] = v; },
@@ -23,6 +23,7 @@ test('configuration fails closed', () => {
     assert.throws(() => configuration({ ...env, OAUTH_ORIGIN: 'https://auth.example/path' }));
     assert.throws(() => configuration({ ...env, GITHUB_CLIENT_ID: ' test-client' }));
     assert.throws(() => configuration({ ...env, GITHUB_CLIENT_SECRET: 'test secret' }));
+    assert.throws(() => configuration({ ...env, GITHUB_ALLOWED_USER_ID: 'owner-name' }));
 });
 test('provider/site validation and no state bypass', async () => {
     const handler = createHandler(env, () => { throw Error('must not call GitHub'); });
@@ -42,8 +43,9 @@ test('single-use state, PKCE, restricted scope, exact origin and authorization',
             assert.ok(body.code_verifier);
             return { ok: true, json: async () => ({ access_token: 'mock-token-not-real' }) };
         }
+        if (url === 'https://api.github.com/user') return { ok: true, json: async () => ({ id: 12345, login: 'renamed-owner' }) };
         assert.equal(url, 'https://api.github.com/repos/test/repo');
-        return { ok: true, json: async () => ({ permissions: { push: true }, private: false }) };
+        return { ok: true, json: async () => ({ full_name: 'test/repo', permissions: { push: true }, private: false }) };
     });
     const { res, url, state, cookie } = await start(handler);
     assert.equal(url.searchParams.get('scope'), 'public_repo');
@@ -57,19 +59,47 @@ test('single-use state, PKCE, restricted scope, exact origin and authorization',
     assert.ok(!callback.body.includes(env.GITHUB_CLIENT_SECRET));
     assert.ok(!callback.body.includes('postMessage(payload,\'*\')'));
     assert.equal((await call(handler, '/callback?code=test&state=' + state, cookie)).status, 400);
-    assert.equal(count, 2);
+    assert.equal(count, 3);
 });
-test('read-only GitHub accounts never receive a token', async () => {
-    const handler = createHandler(env, async url => ({ ok: true, json: async () => url.endsWith('/access_token') ? { access_token: 'mock-token-not-real' } : { permissions: { push: false }, private: false } }));
+test('unauthorized GitHub account is rejected before repository access', async () => {
+    const calls = [];
+    const handler = createHandler(env, async url => {
+        calls.push(url);
+        if (url.endsWith('/access_token')) return { ok: true, json: async () => ({ access_token: 'mock-token-not-real' }) };
+        assert.equal(url, 'https://api.github.com/user');
+        return { ok: true, json: async () => ({ id: 99999 }) };
+    });
     const { state, cookie } = await start(handler);
     const callback = await call(handler, '/callback?code=test&state=' + state, cookie);
     assert.equal(callback.status, 403);
     assert.ok(!callback.body.includes('mock-token'));
+    assert.equal(calls.some(url => url.includes('/repos/')), false);
+});
+test('wrong repository or read-only permission never receives a token', async () => {
+    for (const repo of [
+        { full_name: 'other/repo', permissions: { push: true }, private: false },
+        { full_name: 'test/repo', permissions: { push: false }, private: false }
+    ]) {
+        const handler = createHandler(env, async url => ({ ok: true, json: async () =>
+            url.endsWith('/access_token') ? { access_token: 'mock-token-not-real' } :
+            url.endsWith('/user') ? { id: 12345 } : repo }));
+        const { state, cookie } = await start(handler);
+        const callback = await call(handler, '/callback?code=test&state=' + state, cookie);
+        assert.equal(callback.status, 403);
+        assert.ok(!callback.body.includes('mock-token'));
+    }
 });
 
 test('Worker configuration rejects whitespace and Durable Object rate limits state creation', async () => {
-    const { config, OAuthStateStore } = await import('../../oauth/worker.mjs');
+    const { config, authorizedGitHubIdentity, OAuthStateStore } = await import('../../oauth/worker.mjs');
     assert.throws(() => config({ ...env, GITHUB_CLIENT_ID: ' test-client' }));
+    const ok = {ok:true};
+    const owner = {id:12345};
+    const repo = {full_name:'test/repo', permissions:{push:true}, private:false};
+    assert.equal(authorizedGitHubIdentity(ok, owner, ok, repo, env), true);
+    assert.equal(authorizedGitHubIdentity(ok, {id:99999}, ok, repo, env), false);
+    assert.equal(authorizedGitHubIdentity(ok, owner, ok, {...repo, full_name:'other/repo'}, env), false);
+    assert.equal(authorizedGitHubIdentity(ok, owner, ok, {...repo, permissions:{push:false}}, env), false);
     const values = new Map();
     const txn = {
         async list() { return new Map(values); },
@@ -91,4 +121,7 @@ test('Worker configuration rejects whitespace and Durable Object rate limits sta
     assert.equal(consumed.verifier, 'v'.repeat(43));
     assert.equal(consumed.expires, first.expires);
     assert.deepEqual(await (await store.fetch(request('/consume', {state:first.state}))).json(), {});
+    const expired = {...record(12), expires: Date.now() - 1};
+    values.set('state:' + expired.state, {verifier:expired.verifier, expires:expired.expires});
+    assert.deepEqual(await (await store.fetch(request('/consume', {state:expired.state}))).json(), {});
 });

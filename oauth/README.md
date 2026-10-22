@@ -11,6 +11,7 @@ Sunucunun secret/environment yöneticisine tanımlayın (repoya yazmayın):
 
 - `GITHUB_CLIENT_ID`: GitHub OAuth App client ID.
 - `GITHUB_CLIENT_SECRET`: OAuth App secret; yalnızca bu sunucuda.
+- `GITHUB_ALLOWED_USER_ID`: izin verilen hesabın değişmez sayısal GitHub kullanıcı ID’si.
 - `CMS_ORIGIN`: `https://0xd34dbyt3.github.io` (proje yolu eklenmez).
 - `OAUTH_ORIGIN`: `https://OAUTH_HOST` (sonunda slash yok).
 - `GITHUB_REPOSITORY`: `0xd34dbyt3/0xd34dbyt3.github.io`.
@@ -26,7 +27,10 @@ yerleştirip yukarıdaki ortam değişkenleriyle GitHub OAuth App'i bağlamak.
 Sunucu kurulduktan sonra `adminEnabled: true` yapılır. Öncesinde admin kapalı kalır.
 Broker `/auth` ve `/callback` sunar. İstemciden gelen scope ve redirect adreslerini
 kullanmaz; public repo için `public_repo` ister, ilgili depoda `push` yetkisini
-GitHub API ile denetler. Bu OAuth kapsamı kullanıcının başka public depolarına da
+GitHub API ile denetler. Ayrıca `/user` yanıtındaki sayısal ID yalnız
+`GITHUB_ALLOWED_USER_ID` ile eşleşirse tokenı Decap’e verir; kullanıcı adı değişse
+de bu kontrol değişmez. Bu sunucu tarafı kontrol tokenın kapsamını daraltmaz.
+OAuth kapsamı kullanıcının başka public depolarına da
 erişebileceğinden ayrı bir içerik editörü hesabı tercih edilebilir.
 
 OAuth App secret tarayıcıya gitmez. Kullanıcının kısa akışta aldığı GitHub erişim
@@ -58,7 +62,10 @@ Kaynaklar:
 - https://decapcms.org/docs/backends-overview/
 - https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
 
-20 Ekim 2026 belge kontrolü: Decap GitHub backend için public depoda `public_repo`
+22 Ekim 2026 belge ve 3.17.1 kaynak kontrolü: Decap GitHub backend için public depoda `public_repo`
 gerekiyor; `repo` istenmiyor. GitHub OAuth App kapsamı tek depoyla sınırlanamaz.
 Mevcut broker PKCE S256, tek kullanımlık state ve hedef depoda `permissions.push`
-kontrolünü korur. Yeni hesap/ücretli hizmet oluşturulmadı.
+kontrolünü korur. GitHub App user access tokenı App kurulumu ve kullanıcı
+yetkilerinin kesişimiyle repo düzeyinde sınırlanabilir; ancak mevcut Decap sürümünde
+yenileme/oturum davranışı gerçek App ile doğrulanmadan OAuth App kimlik bilgileri
+değiştirilmemelidir. Yeni hesap, App veya ücretli hizmet oluşturulmadı.

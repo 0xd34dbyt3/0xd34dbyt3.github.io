@@ -8,6 +8,7 @@ preview_urls = false
 CMS_ORIGIN = "https://0xd34dbyt3.github.io"
 OAUTH_ORIGIN = "https://portfolio-admin-auth.muhammedfatihozturk02.workers.dev"
 GITHUB_REPOSITORY = "0xd34dbyt3/0xd34dbyt3.github.io"
+GITHUB_ALLOWED_USER_ID = "170147187"
 
 [[durable_objects.bindings]]
 name = "OAUTH_STATE"
