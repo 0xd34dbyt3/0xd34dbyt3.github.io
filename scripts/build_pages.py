@@ -32,6 +32,27 @@ MAX_IMAGE_DIMENSION = 8192
 MAX_IMAGE_PIXELS = 40_000_000
 
 
+class AllowlistedRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Reject a redirect before urllib opens the redirected request."""
+
+    def __init__(self, allowed_hosts):
+        self.allowed_hosts = frozenset(allowed_hosts)
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        target = urlsplit(newurl)
+        if target.scheme != "https" or target.hostname not in self.allowed_hosts:
+            raise ValueError("Unexpected feed redirect")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def open_feed_url(url, allowed_hosts, timeout=8):
+    parsed = urlsplit(url)
+    if parsed.scheme != "https" or parsed.hostname not in allowed_hosts:
+        raise ValueError("Unexpected feed source")
+    opener = urllib.request.build_opener(AllowlistedRedirectHandler(allowed_hosts))
+    return opener.open(urllib.request.Request(url, headers={"User-Agent": "StaticPortfolioBuild/1.0"}), timeout=timeout)
+
+
 def read_json(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -312,7 +333,7 @@ def get_feeds(content, refresh):
             try:
                 url = "https://feeds.feedburner.com/TheHackersNews" if kind == "news" else "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
                 allowed_source_hosts = {"feeds.feedburner.com"} if kind == "news" else {"www.cisa.gov"}
-                with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "StaticPortfolioBuild/1.0"}), timeout=8) as response:
+                with open_feed_url(url, allowed_source_hosts) as response:
                     if urlsplit(response.geturl()).hostname not in allowed_source_hosts:
                         raise ValueError("Unexpected feed redirect")
                     raw = response.read(8_000_001)

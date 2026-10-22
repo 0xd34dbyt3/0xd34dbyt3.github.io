@@ -3,10 +3,11 @@ import json
 import sys
 import tempfile
 import unittest
+import urllib.request
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from build_pages import ROOT, build, markdown_html, base_path, validate_about, read_json, audit, validate_image, get_feeds
+from build_pages import ROOT, build, markdown_html, base_path, validate_about, read_json, audit, validate_image, get_feeds, AllowlistedRedirectHandler
 from bs4 import BeautifulSoup
 
 class PagesTests(unittest.TestCase):
@@ -155,9 +156,17 @@ class PagesTests(unittest.TestCase):
             def __exit__(self, *_): pass
             def geturl(self): return 'https://attacker.example/feed'
             def read(self, _): return b'<rss><channel></channel></rss>'
-        with patch('build_pages.urllib.request.urlopen', return_value=Redirected()):
+        with patch('build_pages.open_feed_url', return_value=Redirected()):
             feeds = get_feeds(self.content, refresh=True)
         self.assertEqual(feeds['news']['status'], 'unavailable')
         self.assertEqual(feeds['cve']['status'], 'unavailable')
+
+    def test_feed_redirect_is_rejected_before_target_request(self):
+        handler = AllowlistedRedirectHandler({'feeds.example'})
+        request = urllib.request.Request('https://feeds.example/source')
+        with patch.object(urllib.request.HTTPRedirectHandler, 'redirect_request') as parent:
+            with self.assertRaisesRegex(ValueError, 'Unexpected feed redirect'):
+                handler.redirect_request(request, None, 302, 'Found', {}, 'https://forbidden.example/private')
+        parent.assert_not_called()
 
 if __name__ == '__main__': unittest.main()
