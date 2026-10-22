@@ -61,19 +61,17 @@ kullanılmaz; yeni `github-app` backend oturumu açılır.
 ## 2. Üretim için kod ve credential çiftini yayımlamadan hazırlama
 
 **Yalnız yukarıdaki gerçek App kabul adımları başarılı olduktan sonra.**
-Yeni assetleri boş bir çıktı dizinine üretin; mevcut çıktıyı silmeyin:
+Kod/asset ve credential çiftini yayımlamadan birlikte hazırlayın:
 
 ```bash
-APP_RELEASE_DIR=$(mktemp -d /tmp/portfolio-app-release.XXXXXX)
-python scripts/build_worker_admin.py --output "$APP_RELEASE_DIR/admin"
-npx --no-install wrangler versions upload --assets "$APP_RELEASE_DIR/admin" --message "GitHub App preparation"
 python scripts/configure_github_app.py --target production --confirmed-real-app-test
 ```
 
-İlk Wrangler komutu yeni kod/asset sürümünü **yayımlamaz**. İkinci komut en son
-yüklenen sürüme JSON credential çiftini **tek secret** olarak ekleyen yeni bir
+Script yeni assetleri kendine ait geçici dizine üretir; `versions upload` ile
+kod/asset sürümünü **yayımlamadan** yükler. Sonra `versions secret put` ile bu
+sürüme JSON credential çiftini **tek secret** olarak ekleyen yeni bir
 **yayımlanmamış** sürüm oluşturur. Mevcut üretim Client ID/secret değişmez.
-Bu iki işlem arasına başka bir Worker sürüm yüklemesi sokmayın.
+Script çalışırken başka bir Worker sürümü yüklemeyin.
 
 Araç çıktısındaki son sürüm ID'sini `wrangler versions view` ile kontrol edin;
 doğru kaynak/asset ve `GITHUB_APP_CREDENTIALS` binding adı görünmeli. Secret

@@ -12,6 +12,9 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
+
+from build_worker_admin import build as build_worker_assets
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -60,6 +63,17 @@ def main():
         secret = getpass.getpass("GitHub App client secret (gizli giriş): ")
         bundle = credential_bundle(client_id, secret)
         environment = dict(os.environ, WRANGLER_SEND_METRICS="false")
+        if args.target == "production":
+            # Upload the matching code/assets first, WITHOUT deploying. Never add
+            # App credentials to a version still running the legacy-only code.
+            with tempfile.TemporaryDirectory(prefix="portfolio-app-release-") as output:
+                assets = Path(output) / "admin"
+                build_worker_assets(assets)
+                uploaded = subprocess.run(wrangler_command() + ["versions", "upload", "--assets", str(assets),
+                                          "--message", "GitHub App preparation"],
+                                         text=True, capture_output=True, cwd=ROOT, env=environment, timeout=120)
+                if uploaded.returncode:
+                    raise ValueError("Kod/asset sürümü yüklenemedi; üretim ve credential'lar değiştirilmedi.")
         result = subprocess.run(command, input=bundle, text=True, capture_output=True,
                                 cwd=ROOT, env=environment, timeout=120)
         if result.returncode:
