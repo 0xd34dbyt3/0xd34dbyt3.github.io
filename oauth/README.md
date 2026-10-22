@@ -1,30 +1,21 @@
-# Ayrı OAuth servisi
+# Ayrı OAuth ve admin Worker'ı
 
-Bu klasör GitHub Pages çıktısına dahil edilmez. Node 22+ çalıştıran ayrı bir HTTPS
-sunucuda `node oauth/server.cjs` çalıştırın; 127.0.0.1:8787 önüne TLS reverse proxy koyun.
-Hesap veya hosting burada oluşturulmadı. Mevcut sunucu kullanılabilir; yeni sağlayıcı
-seçimi ve olası maliyet kullanıcıya aittir. Tek süreç kullanın: geçici OAuth state
-bellekte tutulur; yeniden başlatma oturumu iptal eder. Çoklu instance için paylaşımlı
-tek kullanımlık state deposu gerekir.
+Üretim OAuth broker'ı ve admin arayüzü Cloudflare Worker'da çalışır; GitHub Pages
+ziyaretçi sitesini sunar. Yerel `server.cjs` yalnız geliştirme/test fallback'idir,
+üretim deploy talimatı değildir. Worker konfigürasyonu `wrangler.toml` içindedir;
+secret'lar `wrangler secret` ile tanımlanır, dosyaya veya rapora yazılmaz.
 
 Sunucunun secret/environment yöneticisine tanımlayın (repoya yazmayın):
 
-- `GITHUB_CLIENT_ID`: GitHub OAuth App client ID.
-- `GITHUB_CLIENT_SECRET`: OAuth App secret; yalnızca bu sunucuda.
-- `GITHUB_ALLOWED_USER_ID`: izin verilen hesabın değişmez sayısal GitHub kullanıcı ID’si.
-- `CMS_ORIGIN`: `https://0xd34dbyt3.github.io` (proje yolu eklenmez).
-- `OAUTH_ORIGIN`: `https://OAUTH_HOST` (sonunda slash yok).
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`: Worker secret'ları.
+- `GITHUB_ALLOWED_USER_ID`: izin verilen hesabın değişmez sayısal GitHub ID'si.
+- `CMS_ORIGIN` ve `OAUTH_ORIGIN`: Worker `workers.dev` origin'i.
+- `PAGES_ORIGIN`: ziyaretçi sitesi ve preview origin'i.
 - `GITHUB_REPOSITORY`: `0xd34dbyt3/0xd34dbyt3.github.io`.
-- `PORT`: isteğe bağlı, varsayılan 8787.
 
-GitHub Settings → Developer settings → OAuth Apps → New OAuth App:
-Homepage URL `https://0xd34dbyt3.github.io`, callback **`OAUTH_ORIGIN` + `/callback`**.
-Gerçek OAuth sunucu adresi henüz verilmedi; `OAUTH_HOST` bir örnektir, kullanılabilir
-bir callback adresi değildir. GitHub Pages OAuth secret saklayamaz ve bu sunucuyu
-çalıştıramaz. Tek eksik kurulum: mevcut Node 22+ HTTPS sunucusuna bu broker'ı
-yerleştirip yukarıdaki ortam değişkenleriyle GitHub OAuth App'i bağlamak.
-`site.config.json` içindeki `oauthOrigin`, OAuth origin ile aynı olmalı.
-Sunucu kurulduktan sonra `adminEnabled: true` yapılır. Öncesinde admin kapalı kalır.
+GitHub OAuth App callback URL'si Worker origin'inin `/callback` yoludur.
+`site.config.json` içindeki `oauthOrigin`, Worker/admin origin’i ile aynı olmalı.
+Worker secret'ları ve GitHub OAuth App callback ayarı deploy öncesi doğrulanmalıdır.
 Broker `/auth` ve `/callback` sunar. İstemciden gelen scope ve redirect adreslerini
 kullanmaz; public repo için `public_repo` ister, ilgili depoda `push` yetkisini
 GitHub API ile denetler. Ayrıca `/user` yanıtındaki sayısal ID yalnız
@@ -36,16 +27,33 @@ erişebileceğinden ayrı bir içerik editörü hesabı tercih edilebilir.
 OAuth App secret tarayıcıya gitmez. Kullanıcının kısa akışta aldığı GitHub erişim
 tokenı Decap'in GitHub API çağrıları için tarayıcıya, yalnızca doğru origin ve
 opener'a gönderilir; bu Decap GitHub backend davranışıdır. Sabit PAT kullanılmaz.
-Decap oturumunu paylaşılan cihazda kapatın; GitHub yetkilendirmesi gerektiğinde
-GitHub üzerinden iptal edilebilir. Origin doğrulaması aynı origin içindeki tüm
-sayfaları kapsar; kullanıcı sitesinde başka güvenilmeyen uygulamalar barındırmayın.
+Decap tokenı halen tarayıcıdaki `localStorage` kaydında tutulur; çıkışta Decap
+bu kaydı siler, ancak GitHub OAuth yetkisini iptal etmez. GitHub Pages `/admin/`
+yalnız Worker `/admin/` adresine yönlendirir ve eski aynı-origin
+`decap-cms-user` değerini siler. Worker admin dosyalarını ayrı origin’de sunar.
+Bu, ziyaretçi origin’indeki başka GitHub Pages projelerinin admin DOM/localStorage
+erişimini keser; XSS’nin admin origin’indeki yetkili tokena erişmesi riskini
+ortadan kaldırmaz.
+
+Worker admin yanıtlarına CSP (`frame-ancestors 'none'` dahil), HSTS, nosniff,
+no-referrer, X-Frame-Options ve Permissions-Policy ekler. Admin preview
+iframe’leri `allow-scripts allow-same-origin` sandbox’ıyla çalışır; parent ile
+farklı origin’de olduklarından bu izinler admin DOM’una erişim sağlamaz.
+Worker deploy öncesi `python scripts/build_worker_admin.py`, sonra
+`npx wrangler deploy` çalıştırılmalıdır. Asset paketi yalnız admin HTML/JS/config
+ve `content-tools.js` içerir.
+
+OAuth flow `/user` endpoint’inde değişmez sayısal kullanıcı ID’sini, ardından
+hedef repo adı, public durumu ve `permissions.push` değerini kontrol eder.
+Bu hesap allowlist’i, OAuth App’in `public_repo` kapsamını hedef repo ile
+sınırlandırmaz.
 
 Proxy access/error loglarında `/callback` sorgu parametrelerini, Cookie/Authorization
 başlıklarını ve yanıt gövdelerini kaydetmeyin. HTTPS zorunludur. Proxy'de `/auth`
 için IP hız sınırı ve kısa istek zaman aşımı uygulayın. Kod token/secret loglamaz;
 OAuth state Secure/HttpOnly/SameSite=Lax cookie + tek kullanımlık kayıt ile doğrulanır.
-PKCE S256 de kullanılır. `Cross-Origin-Opener-Policy: same-origin` gibi popup opener'ı
-kesen bir başlık eklemeyin.
+PKCE S256 de kullanılır. Admin origin’inde `Cross-Origin-Opener-Policy:
+same-origin-allow-popups` kullanılır; popup handshake korunur.
 
 Worker ayrıca `CF-Connecting-IP` değerinin yalnız SHA-256 özetini Durable Object içinde
 bir dakika tutarak istemci başına dakikada 10 state üretimi sınırı uygular. Bu uygulama

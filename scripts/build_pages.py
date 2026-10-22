@@ -529,9 +529,9 @@ def build(output, content=ROOT / "content", site=None, refresh=False, release=Fa
     save("404.html", soup)
     (output / "admin").mkdir()
     if admin_enabled:
-        shutil.copyfile(ROOT / "pages/admin.html", output / "admin/index.html")
-        shutil.copyfile(ROOT / "pages/admin.js", output / "admin/admin.js")
-        dump(output / "admin/config.yml", cms_config(site))
+        redirect_page = (ROOT / "pages/admin-redirect.html").read_text(encoding="utf-8")
+        redirect_page = redirect_page.replace("{{ADMIN_ORIGIN}}", esc(site["oauthOrigin"]))
+        (output / "admin/index.html").write_text(redirect_page, encoding="utf-8")
     else:
         shutil.copyfile(ROOT / "pages/admin-pending.html", output / "admin/index.html")
     (output / ".nojekyll").touch()

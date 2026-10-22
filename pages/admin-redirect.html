@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="refresh" content="0;url={{ADMIN_ORIGIN}}/admin/">
+  <title>İçerik yönetimine yönlendiriliyor</title>
+</head>
+<body>
+  <p>İçerik yönetimi ayrı güvenli adreste sunulur. <a href="{{ADMIN_ORIGIN}}/admin/">Devam et</a>.</p>
+  <script>
+    try { localStorage.removeItem('decap-cms-user'); } catch (_) {}
+    location.replace('{{ADMIN_ORIGIN}}/admin/');
+  </script>
+</body>
+</html>

@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from build_pages import ROOT, build, markdown_html, base_path, validate_about, read_json, audit, validate_image, get_feeds, AllowlistedRedirectHandler
+from build_worker_admin import build as build_worker_admin
 from bs4 import BeautifulSoup
 
 class PagesTests(unittest.TestCase):
@@ -49,9 +50,10 @@ class PagesTests(unittest.TestCase):
             mapping = json.loads(legacy.select_one('#legacy-map').text)
             self.assertEqual(mapping['blog:42'], prefix + 'blog/test-only-fixture/')
             self.assertEqual(mapping['blog:test-only-fixture'], mapping['blog:42'])
-            cms = read_json(output / 'admin/config.yml')
-            self.assertEqual(cms['backend']['name'], 'github')
-            self.assertEqual(cms['public_folder'], prefix + 'media')
+            redirect = BeautifulSoup((output / 'admin/index.html').read_text(), 'html.parser')
+            self.assertEqual(redirect.select_one('a')['href'], 'https://auth.example/admin/')
+            self.assertIn("localStorage.removeItem('decap-cms-user')", (output / 'admin/index.html').read_text())
+            self.assertFalse((output / 'admin/config.yml').exists())
             self.assertFalse((output / 'server').exists())
             self.assertFalse((output / 'admin/dashboard.html').exists())
             self.assertFalse((output / 'deploy.zip').exists())
@@ -60,6 +62,18 @@ class PagesTests(unittest.TestCase):
                 result = BeautifulSoup((output / page).read_text(), 'html.parser')
                 self.assertEqual([s.text for s in original.select('style')], [s.text for s in result.select('style')])
                 self.assertEqual(original.select_one('main').get('class'), result.select_one('main').get('class'))
+
+    def test_admin_assets_are_only_on_worker_origin(self):
+        output = self.root / 'worker-admin'
+        build_worker_admin(output)
+        self.assertEqual({path.relative_to(output).as_posix() for path in output.rglob('*') if path.is_file()}, {
+            'admin/index.html', 'admin/admin.js', 'admin/config.yml', 'js/content-tools.js'
+        })
+        cms = json.loads((output / 'admin/config.yml').read_text())
+        self.assertEqual(cms['backend']['base_url'], 'https://portfolio-admin-auth.muhammedfatihozturk02.workers.dev')
+        self.assertEqual(cms['backend']['repo'], '0xd34dbyt3/0xd34dbyt3.github.io')
+        admin_js = (output / 'admin/admin.js').read_text()
+        self.assertIn("setAttribute('sandbox', 'allow-scripts allow-same-origin')", admin_js)
 
     def test_sanitize_markdown(self):
         result = markdown_html('<script>alert(1)</script><iframe src="https://bad.test"></iframe><img src="javascript:alert(1)" onerror="bad()"><a href="javascript:bad()">bad</a>\n\n![ok|40%;color:red](/media/test.png)', '/repo/')

@@ -2,6 +2,13 @@
 (function () {
   'use strict';
   const T = window.ContentTools;
+  const previewFrameObserver = new MutationObserver(() => {
+    for (const frame of document.querySelectorAll('#nc-root iframe')) {
+      frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+      frame.referrerPolicy = 'no-referrer';
+    }
+  });
+  previewFrameObserver.observe(document.body, {childList:true, subtree:true});
   const escape = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
   const field = (name, label, widget = 'string', extra = {}) => ({name, label, widget, ...extra});
   const status = text => {

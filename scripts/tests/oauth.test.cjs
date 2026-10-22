@@ -1,8 +1,9 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const { createHandler, configuration } = require('../../oauth/server.cjs');
-const env = { GITHUB_CLIENT_ID: 'testclient', GITHUB_CLIENT_SECRET: 'test-secret-not-real', GITHUB_ALLOWED_USER_ID: '12345', CMS_ORIGIN: 'https://cms.example', OAUTH_ORIGIN: 'https://auth.example', GITHUB_REPOSITORY: 'test/repo' };
+const env = { GITHUB_CLIENT_ID: 'testclient', GITHUB_CLIENT_SECRET: 'test-secret-not-real', GITHUB_ALLOWED_USER_ID: '12345', CMS_ORIGIN: 'https://auth.example', OAUTH_ORIGIN: 'https://auth.example', PAGES_ORIGIN:'https://pages.example', GITHUB_REPOSITORY: 'test/repo' };
 function response() {
     return { headers: {}, status: 200, body: '', headersSent: false,
         setHeader(k, v) { this.headers[k] = v; },
@@ -13,7 +14,8 @@ async function call(handler, url, cookie = '', method = 'GET') {
     const res = response(); await handler({ url, method, headers: { cookie } }, res); return res;
 }
 async function start(handler) {
-    const res = await call(handler, '/auth?provider=github&site_id=cms.example&scope=repo');
+    const siteId = new URL(env.CMS_ORIGIN).hostname;
+    const res = await call(handler, '/auth?provider=github&site_id=' + siteId + '&scope=repo');
     const url = new URL(res.headers.Location);
     return { res, url, state: url.searchParams.get('state'), cookie: res.headers['Set-Cookie'].split(';')[0] };
 }
@@ -55,7 +57,7 @@ test('single-use state, PKCE, restricted scope, exact origin and authorization',
     assert.equal(callback.status, 200);
     assert.ok(callback.body.includes('authorization:github:success:'));
     assert.ok(callback.body.includes('event.source !== window.opener'));
-    assert.ok(callback.body.includes('https://cms.example'));
+    assert.ok(callback.body.includes('https://auth.example'));
     assert.ok(!callback.body.includes(env.GITHUB_CLIENT_SECRET));
     assert.ok(!callback.body.includes('postMessage(payload,\'*\')'));
     assert.equal((await call(handler, '/callback?code=test&state=' + state, cookie)).status, 400);
@@ -91,7 +93,7 @@ test('wrong repository or read-only permission never receives a token', async ()
 });
 
 test('Worker configuration rejects whitespace and Durable Object rate limits state creation', async () => {
-    const { config, authorizedGitHubIdentity, OAuthStateStore } = await import('../../oauth/worker.mjs');
+    const {default: worker, ADMIN_CSP, config, authorizedGitHubIdentity, OAuthStateStore} = await import('../../oauth/worker.mjs');
     assert.throws(() => config({ ...env, GITHUB_CLIENT_ID: ' test-client' }));
     const ok = {ok:true};
     const owner = {id:12345};
@@ -100,6 +102,16 @@ test('Worker configuration rejects whitespace and Durable Object rate limits sta
     assert.equal(authorizedGitHubIdentity(ok, {id:99999}, ok, repo, env), false);
     assert.equal(authorizedGitHubIdentity(ok, owner, ok, {...repo, full_name:'other/repo'}, env), false);
     assert.equal(authorizedGitHubIdentity(ok, owner, ok, {...repo, permissions:{push:false}}, env), false);
+    const assetEnv = {...env, ASSETS:{fetch:async request => new Response('admin', {headers:{'Content-Type':'text/html'}})}};
+    const admin = await worker.fetch(new Request('https://auth.example/admin/'), assetEnv);
+    const inlineHash = crypto.createHash('sha256').update('window.CMS_MANUAL_INIT = true;').digest('base64');
+    assert.equal(admin.status, 200);
+    assert.ok(ADMIN_CSP.includes(`'sha256-${inlineHash}'`));
+    assert.match(admin.headers.get('Content-Security-Policy'), /frame-ancestors 'none'/);
+    assert.equal(admin.headers.get('X-Frame-Options'), 'DENY');
+    assert.equal(admin.headers.get('Cache-Control'), 'no-store');
+    assert.equal((await worker.fetch(new Request('https://auth.example/admin/?x=1'), assetEnv)).status, 200);
+    assert.equal((await worker.fetch(new Request('https://evil.example/admin/'), assetEnv)).status, 404);
     const values = new Map();
     const txn = {
         async list() { return new Map(values); },

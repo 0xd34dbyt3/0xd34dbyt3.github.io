@@ -1,15 +1,17 @@
 const COOKIE = '__Host-decap_state';
 const STATE_TTL = 5 * 60 * 1000;
 const MAX_PENDING = 1000;
+const ADMIN_ASSETS = new Set(['/admin/', '/admin/index.html', '/admin/admin.js', '/admin/config.yml', '/js/content-tools.js']);
+export const ADMIN_CSP = "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net 'sha256-Hx47mYK7okpadKVYneZvwqwuJSl8ZUaC0EMxEJ/t+8c='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https://api.github.com https://github.com https://raw.githubusercontent.com; frame-src https://0xd34dbyt3.github.io";
 
 export function config(env) {
-  for (const key of ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_ALLOWED_USER_ID', 'CMS_ORIGIN', 'OAUTH_ORIGIN', 'GITHUB_REPOSITORY']) {
+  for (const key of ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_ALLOWED_USER_ID', 'CMS_ORIGIN', 'OAUTH_ORIGIN', 'PAGES_ORIGIN', 'GITHUB_REPOSITORY']) {
     if (!env[key] || /GITHUB_OWNER|example\.invalid/.test(env[key])) throw new Error('Invalid configuration');
     if (env[key] !== env[key].trim()) throw new Error('Invalid configuration');
   }
   if (!/^[A-Za-z0-9]+$/.test(env.GITHUB_CLIENT_ID) || !/^\S+$/.test(env.GITHUB_CLIENT_SECRET)) throw new Error('Invalid configuration');
   if (!/^[1-9][0-9]*$/.test(env.GITHUB_ALLOWED_USER_ID)) throw new Error('Invalid configuration');
-  for (const key of ['CMS_ORIGIN', 'OAUTH_ORIGIN']) {
+  for (const key of ['CMS_ORIGIN', 'OAUTH_ORIGIN', 'PAGES_ORIGIN']) {
     const url = new URL(env[key]);
     if (url.protocol !== 'https:' || url.origin !== env[key]) throw new Error('Invalid configuration');
   }
@@ -33,7 +35,8 @@ function jsonScript(value) {
 function response(body, status = 200, headers = {}) {
   return new Response(body, { status, headers: {
     'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
-    'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', ...headers
+    'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
+    'Strict-Transport-Security': 'max-age=31536000', 'Permissions-Policy': 'camera=(), microphone=(), geolocation=()', ...headers
   }});
 }
 function fail(status, message, extraHeaders = {}) {
@@ -62,6 +65,23 @@ export default {
       const cfg = config(env);
       const url = new URL(request.url);
       if (url.origin !== cfg.OAUTH_ORIGIN) return fail(404, 'Not found');
+      if (url.pathname === '/admin') return response(null, 308, { Location: '/admin/' });
+      if (ADMIN_ASSETS.has(url.pathname)) {
+        if (request.method !== 'GET' && request.method !== 'HEAD') return fail(405, 'Method not allowed');
+        if (!env.ASSETS) return fail(503, 'Admin assets unavailable');
+        const asset = await env.ASSETS.fetch(request);
+        const headers = new Headers(asset.headers);
+        headers.set('Cache-Control', 'no-store');
+        headers.set('Referrer-Policy', 'no-referrer');
+        headers.set('X-Content-Type-Options', 'nosniff');
+        headers.set('X-Frame-Options', 'DENY');
+        headers.set('Strict-Transport-Security', 'max-age=31536000');
+        headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        headers.set('Content-Security-Policy', ADMIN_CSP);
+        headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+        headers.set('Cross-Origin-Resource-Policy', 'same-origin');
+        return new Response(asset.body, { status: asset.status, statusText: asset.statusText, headers });
+      }
       if (request.method !== 'GET') return fail(405, 'Method not allowed');
       if (request.url.length > 4096) return fail(414, 'Request URI too long');
 
