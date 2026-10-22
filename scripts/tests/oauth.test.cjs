@@ -124,7 +124,8 @@ test('Worker configuration rejects whitespace and Durable Object rate limits sta
     const request = (path, body) => new Request('https://oauth-state.internal' + path, {
         method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
     });
-    const record = n => ({state:n.toString(16).padStart(64, '0'), verifier:'v'.repeat(43), expires:Date.now()+300000, clientKey});
+    const record = n => ({state:n.toString(16).padStart(64, '0'), verifier:'v'.repeat(43), expires:Date.now()+300000, clientKey,
+        authMode:'oauth_app', clientId:'testclient'});
     const first = record(1);
     assert.equal((await store.fetch(request('/create', first))).status, 201);
     for (let n = 2; n <= 10; n++) assert.equal((await store.fetch(request('/create', record(n)))).status, 201);

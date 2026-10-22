@@ -15,6 +15,7 @@ OAUTH_ORIGIN = "https://portfolio-admin-auth.muhammedfatihozturk02.workers.dev"
 PAGES_ORIGIN = "https://0xd34dbyt3.github.io"
 GITHUB_REPOSITORY = "0xd34dbyt3/0xd34dbyt3.github.io"
 GITHUB_ALLOWED_USER_ID = "170147187"
+GITHUB_REPOSITORY_ID = "1425670208"
 
 [[durable_objects.bindings]]
 name = "OAUTH_STATE"
@@ -23,3 +24,24 @@ class_name = "OAuthStateStore"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["OAuthStateStore"]
+
+# Separate free-plan test Worker. It cannot fall back to production OAuth.
+# Add its callback URL to the GitHub App before a real login test.
+[env.appcheck]
+name = "portfolio-admin-auth-app-check"
+workers_dev = true
+preview_urls = false
+
+[env.appcheck.vars]
+GITHUB_AUTH_MODE = "github_app"
+CMS_ORIGIN = "https://portfolio-admin-auth-app-check.muhammedfatihozturk02.workers.dev"
+OAUTH_ORIGIN = "https://portfolio-admin-auth-app-check.muhammedfatihozturk02.workers.dev"
+PAGES_ORIGIN = "https://0xd34dbyt3.github.io"
+GITHUB_REPOSITORY = "0xd34dbyt3/0xd34dbyt3.github.io"
+GITHUB_ALLOWED_USER_ID = "170147187"
+GITHUB_REPOSITORY_ID = "1425670208"
+CMS_BRANCH = "security/github-app-check"
+
+[[env.appcheck.durable_objects.bindings]]
+name = "OAUTH_STATE"
+class_name = "OAuthStateStore"

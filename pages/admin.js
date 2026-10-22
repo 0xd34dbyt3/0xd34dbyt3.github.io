@@ -615,6 +615,7 @@
   // Native Decap supplies delete confirmation, route-leave warning and keeps
   // the Redux draft on persist failure. Do not replace or auto-submit those flows.
   fetch('config.yml').then(r => { if (!r.ok) throw Error(); return r.json(); }).then(config => {
+    if (config.backend.name === 'github-app') GitHubAppSession.register(CMS, config.backend.base_url, document);
     document.getElementById('actions-link').href = 'https://github.com/' + config.backend.repo + '/actions/workflows/pages.yml';
     // This file already fetched the complete config; prevent Decap from loading
     // config.yml again and merging the collections array a second time.

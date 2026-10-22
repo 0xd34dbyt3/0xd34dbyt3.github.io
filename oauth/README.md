@@ -1,5 +1,10 @@
 # Ayrı OAuth ve admin Worker'ı
 
+GitHub App geçiş hazırlığı: [GITHUB_APP_MIGRATION.md](GITHUB_APP_MIGRATION.md).
+Varsayılan eski OAuth akışı, `GITHUB_APP_CREDENTIALS` tek JSON secret'ı
+etkinleştirilene kadar korunur. Aşağıdaki `public_repo` açıklamaları eski
+OAuth App moduna aittir; App modu yalnız kısa ömürlü kullanıcı tokenı ister.
+
 Üretim OAuth broker'ı ve admin arayüzü Cloudflare Worker'da çalışır; GitHub Pages
 ziyaretçi sitesini sunar. Yerel `server.cjs` yalnız geliştirme/test fallback'idir,
 üretim deploy talimatı değildir. Worker konfigürasyonu `wrangler.toml` içindedir;

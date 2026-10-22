@@ -67,7 +67,7 @@ class PagesTests(unittest.TestCase):
         output = self.root / 'worker-admin'
         build_worker_admin(output)
         self.assertEqual({path.relative_to(output).as_posix() for path in output.rglob('*') if path.is_file()}, {
-            'admin/index.html', 'admin/admin.js', 'admin/config.yml', 'js/content-tools.js'
+            'admin/index.html', 'admin/admin.js', 'admin/github-app-session.js', 'admin/config.yml', 'js/content-tools.js'
         })
         cms = json.loads((output / 'admin/config.yml').read_text())
         self.assertEqual(cms['backend']['base_url'], 'https://portfolio-admin-auth.muhammedfatihozturk02.workers.dev')

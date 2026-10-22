@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FILES = {
     ROOT / "pages/admin.html": Path("admin/index.html"),
     ROOT / "pages/admin.js": Path("admin/admin.js"),
+    ROOT / "pages/github-app-session.js": Path("admin/github-app-session.js"),
     ROOT / "public/js/content-tools.js": Path("js/content-tools.js"),
 }
 
