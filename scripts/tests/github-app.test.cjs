@@ -134,14 +134,40 @@ test('state expires, concurrent callbacks consume once, rotation fails before to
 
 test('App admin config selects adapter and isolated branch without altering the static asset',async t=>{
   const f=await fixture(t);
-  const original={backend:{name:'github',repo:'test/repo',branch:'main',base_url:'https://old.example'}};
+  const original={backend:{name:'github',repo:'test/repo',branch:'main',base_url:'https://old.example',auth_scope:'public_repo'}};
   f.env.CMS_BRANCH='security/github-app-check';
   f.env.ASSETS={fetch:async()=>json(original)};
   const config=await (await f.call('/admin/config.yml')).json();
   assert.equal(config.backend.name,'github-app');
   assert.equal(config.backend.base_url,f.env.CMS_ORIGIN);
   assert.equal(config.backend.branch,'security/github-app-check');
+  assert.equal(config.backend.auth_scope,undefined);
   assert.equal(original.backend.name,'github');
+  assert.equal(original.backend.auth_scope,'public_repo');
+});
+
+test('native login gets only App scope after config validation',()=>{
+  const NativeAuth=()=>{};
+  class Native {authComponent(){return NativeAuth;}}
+  const App=backendClass(Native,{createElement:(component,props)=>({component,props})});
+  const config={backend:{name:'github-app',repo:'test/repo'}};
+  const rendered=new App().authComponent()({config});
+  assert.equal(rendered.component,NativeAuth);
+  assert.equal(rendered.props.config.backend.auth_scope,'offline_access');
+  assert.equal(config.backend.auth_scope,undefined);
+});
+
+test('save receipt follows confirmed backend write; failed write never emits success',async()=>{
+  const sha='a'.repeat(40), receipts=[]; let failed=0, reject=false;
+  class Native { async persistEntry(){if(reject)throw Object.assign(Error('failure'),{status:422});return {object:{sha}};} }
+  const App=backendClass(Native,{onSaved:receipt=>receipts.push(receipt),onSaveError:()=>failed++,onExpired:()=>{}});
+  const backend=new App();
+  await backend.persistEntry({},{});
+  assert.deepEqual(receipts,[{sha}]);
+  reject=true;
+  await assert.rejects(()=>backend.persistEntry({},{}),{status:422});
+  assert.equal(receipts.length,1);
+  assert.equal(failed,1);
 });
 
 test('401/expiry preserves open draft and media, explicit login updates credentials, no write replay',async()=>{

@@ -12,6 +12,8 @@ FILES = {
     ROOT / "pages/admin.js": Path("admin/admin.js"),
     ROOT / "pages/github-app-session.js": Path("admin/github-app-session.js"),
     ROOT / "public/js/content-tools.js": Path("js/content-tools.js"),
+    ROOT / "public/styles.css": Path("styles.css"),
+    ROOT / "public/content.css": Path("content.css"),
 }
 
 

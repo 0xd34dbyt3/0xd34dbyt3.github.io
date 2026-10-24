@@ -7,6 +7,7 @@ import argparse
 import datetime as dt
 import html
 import json
+import os
 import re
 import shutil
 import sys
@@ -537,6 +538,9 @@ def build(output, content=ROOT / "content", site=None, refresh=False, release=Fa
     (output / ".nojekyll").touch()
     audit(output, base)
     report = dict(migration=migration["status"], posts={k: sum(p["type"] == k for p in posts) for k in ("blog", "project")}, referencedImages=len(media_refs), release=release, adminEnabled=admin_enabled)
+    source_commit = os.environ.get('GITHUB_SHA', '')
+    if re.fullmatch(r'[0-9a-f]{40}', source_commit):
+        report['sourceCommit'] = source_commit
     dump(output / "build-report.json", report)
     print(json.dumps(dict(output=str(output), **report)))
     return report

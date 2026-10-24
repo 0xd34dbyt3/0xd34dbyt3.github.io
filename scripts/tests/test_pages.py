@@ -63,12 +63,22 @@ class PagesTests(unittest.TestCase):
                 self.assertEqual([s.text for s in original.select('style')], [s.text for s in result.select('style')])
                 self.assertEqual(original.select_one('main').get('class'), result.select_one('main').get('class'))
 
+    def test_live_build_report_identifies_exact_ci_commit(self):
+        commit = 'a' * 40
+        with patch.dict('os.environ', {'GITHUB_SHA': commit}):
+            output = self.root / 'commit-report'
+            build(output, self.content, self.site)
+        self.assertEqual(json.loads((output / 'build-report.json').read_text())['sourceCommit'], commit)
+
     def test_admin_assets_are_only_on_worker_origin(self):
         output = self.root / 'worker-admin'
         build_worker_admin(output)
         self.assertEqual({path.relative_to(output).as_posix() for path in output.rglob('*') if path.is_file()}, {
-            'admin/index.html', 'admin/admin.js', 'admin/github-app-session.js', 'admin/config.yml', 'js/content-tools.js'
+            'admin/index.html', 'admin/admin.js', 'admin/github-app-session.js', 'admin/config.yml', 'js/content-tools.js',
+            'styles.css', 'content.css'
         })
+        for name in ('styles.css', 'content.css'):
+            self.assertEqual((output / name).read_bytes(), (ROOT / 'public' / name).read_bytes())
         cms = json.loads((output / 'admin/config.yml').read_text())
         self.assertEqual(cms['backend']['base_url'], 'https://portfolio-admin-auth.muhammedfatihozturk02.workers.dev')
         self.assertEqual(cms['backend']['repo'], '0xd34dbyt3/0xd34dbyt3.github.io')

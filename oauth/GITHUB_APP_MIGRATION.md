@@ -1,5 +1,9 @@
 # GitHub App kullanıcı tokenına kontrollü geçiş
 
+24 Ekim ortak editör ve açık üretim CSP profili için güncel akış:
+[ADMIN_RELEASE.md](ADMIN_RELEASE.md). Aşağıdaki eski tarihlenmiş simülasyon
+notları gerçek kabulün yerine geçmez; gerçek kanıt ayrı kabul raporunda tutulur.
+
 Workers Free planı ve yalnız hedef depoya Contents write / Metadata read kurulumu
 sahip tarafından doğrulandı. Bu talimat plan/abonelik açmaz. Mevcut OAuth App
 secret'ları korunur. Gerçek App ile test yapılmadan üretim geçişi tamamlanmış değildir.
@@ -18,8 +22,11 @@ Test Worker adı `portfolio-admin-auth-app-check`, admin adresi aynı origin'in
 secret eksikse güvenli biçimde kapanır, eski OAuth'a geri dönmez. CMS kayıtları
 yalnız `security/github-app-check` dalına gider; `main` veya canlı site değişmez.
 Bu dalda public fixture içerikler kullanın; kayıtlar public Git geçmişinde kalabilir.
+GitHub arayüzünde `main` üzerinden `security/github-app-check` dalını oluşturun;
+varsa mevcut test dalını koruyun. Decap hedef dalı kendiliğinden oluşturmaz.
 
-Hazırlanmış test Worker'a çift kimlik bilgisini **tek secret** olarak yükleyin:
+Güncel kod/assetleri yalnız test Worker'a yayımlayıp çift kimlik bilgisini
+**tek secret** olarak yükleyin:
 
 ```bash
 python scripts/configure_github_app.py --target check
@@ -30,6 +37,8 @@ Wrangler stdin'inde bulunur; dosyaya, shell history'ye veya komut argümanların
 yazılmaz. `GITHUB_APP_CREDENTIALS` tek işlemle oluşturulur. İki ayrı `secret put`
 komutu çalıştırmayın. Script mevcut kurulu Wrangler'ı kullanır, araç kurmaz.
 App Client ID `Iv...` biçimindedir; App ID veya eski OAuth App `Ov...` ID'si değildir.
+Kod/asset yüklemesi başarısızsa secret işlemine geçilmez. Üretim Worker'ı bu
+komutla değiştirilmez. Scriptin yakaladığı ham Wrangler çıktıları gösterilmez.
 
 Temiz bir tarayıcı profiliyle test adminine girin; GitHub App yetkilendirmesini
 tamamlayın. Sunucu sayısal hesap ID `170147187`, hedef depo ID `1425670208`,
@@ -57,6 +66,24 @@ App/UI sonucunun yerine geçmez. Adapter yenileme tokenını tarayıcıya gönde
 otomatik token refresh hizmeti kurmaz. Token hâlâ localStorage'dadır; bu risk
 giderilmiş değildir. İlk App girişinde eski `github` backend kaydı yeniden
 kullanılmaz; yeni `github-app` backend oturumu açılır.
+
+22 Ekim 2026 yerel kanıt: Decap 3.17.1 config şeması `offline_access` değerini
+`backend.auth_scope` içinde kabul etmiyor. Worker bu alanı App config'inden
+çıkarır; adapter yalnız giriş bileşenine, config doğrulamasından sonra
+`offline_access` verir. App girişinde `public_repo`/`repo` istenmez.
+Sabitlenmiş admin paketiyle aşağıdaki tarayıcı regresyonu config/giriş, kontrollü
+süre dolumu, upstream 401, popup iptali, açık EN/TR editörü ve File nesnesi,
+saklanan credential güncellemesi, otomatik yazma yapılmaması ve açık kullanıcı
+kaydı/yeniden açmayı denetler. GitHub/OAuth yanıtları simüledir; seçili gerçek
+Decap medya taslağı ve gerçek sekiz saatlik token süresi için kabul adımı 3 kalır.
+
+```bash
+python scripts/tests/browser_github_app.py --decap-bundle .private/decap-cms.js
+```
+
+Bu isteğe bağlı test mevcut Playwright/Chromium ortamında çalışır ve paketin
+admin HTML'indeki SHA-384 değeriyle eşleşmesini zorunlu tutar. Gerçek App ile
+giriş, metin/PNG kaydı ve yeniden giriş: **henüz doğrulanmadı**.
 
 ## 2. Üretim için kod ve credential çiftini yayımlamadan hazırlama
 

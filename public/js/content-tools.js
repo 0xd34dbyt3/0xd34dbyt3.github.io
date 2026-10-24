@@ -9,10 +9,14 @@
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k => !(k in defaults))) throw Error('Bilinmeyen blok alanı.');
     const d = {...defaults, ...value};
     if (kind === 'image') {
-      if (['src', 'alt', 'caption'].some(k => typeof d[k] !== 'string') ||
-          !d.src || !['px', '%'].includes(d.unit) || !['left', 'center', 'right'].includes(d.align) ||
-          !['none', 'square', 'wide'].includes(d.crop) || !Number.isInteger(d.width) ||
+      if (['src', 'alt', 'caption'].some(k => typeof d[k] !== 'string')) throw Error('Görsel adresi, alt metin ve açıklama metin olmalı.');
+      if (!d.src) throw Error('Bu blok için görsel seçin veya boş görsel bloğunu kaldırın.');
+      if (!['px', '%'].includes(d.unit)) throw Error('Görsel birimi % veya px olmalı; birim seçin.');
+      if (typeof d.width !== 'number') throw Error('Görsel genişliği sayı olmalı; genişlik alanını yeniden girin.');
+      if (!Number.isInteger(d.width) ||
           d.width < 1 || d.width > (d.unit === '%' ? 100 : 4096)) throw Error('Görsel genişliği % için 1–100, px için 1–4096 olmalı.');
+      if (!['left', 'center', 'right'].includes(d.align)) throw Error('Görsel hizalaması sol, orta veya sağ olmalı.');
+      if (!['none', 'square', 'wide'].includes(d.crop)) throw Error('Görsel kırpma seçimi geçersiz.');
       safeImage(d.src);
     } else if (typeof d.code !== 'string' || !languages.includes(d.language) || typeof d.wrap !== 'boolean') throw Error('Kod bloğu ayarları geçersiz.');
     return d;
@@ -38,21 +42,26 @@
     if (type === 'code') return {key: crypto.randomUUID(), type, value: {code: '', language: 'text', wrap: false}, raw: null};
     throw Error('Bilinmeyen içerik bloğu.');
   }
-  function parseDocument(source) {
+  function parseDocument(source, {draft = false} = {}) {
     source = typeof source === 'string' ? source : '';
     const blocks = [];
     const pattern = /^```cms-(image|code)\r?\n([^\r\n]+)\r?\n```$/gm;
     const matches = [];
     for (const match of source.matchAll(pattern)) {
+      let parsed;
       try {
-        const parsed = JSON.parse(match[2]);
+        parsed = JSON.parse(match[2]);
         // Empty image sources are a valid in-progress editor draft. Keep the typed
         // block editable until preSave can report the missing upload without loss.
         const draftImage = match[1] === 'image' && parsed && parsed.src === '';
         const value = draftImage ? {...validate('image', {...parsed, src:'/draft-image'}), src:''} : validate(match[1], parsed);
         matches.push({match, value});
       }
-      catch { /* Keep malformed legacy text unchanged for visible repair. */ }
+      catch {
+        // Keep invalid image settings editable, without accepting them on save.
+        if (draft && match[1] === 'image' && parsed && typeof parsed === 'object' && !Array.isArray(parsed)) matches.push({match, value:parsed});
+        // Other malformed legacy text stays unchanged for visible repair.
+      }
     }
     let cursor = 0;
     for (const {match, value} of matches) {

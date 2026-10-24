@@ -12,6 +12,24 @@ from configure_github_app import credential_bundle, secret_command, main
 
 
 class GitHubAppSetupTests(unittest.TestCase):
+    def test_check_deploys_matching_code_only_to_appcheck_before_setting_pair(self):
+        class Terminal(io.StringIO):
+            def isatty(self):
+                return True
+        with patch('sys.argv', ['configure_github_app.py', '--target', 'check']), \
+             patch('sys.stdin', Terminal()), patch('sys.stderr', Terminal()), \
+             patch('configure_github_app.wrangler_command', return_value=['wrangler']), \
+             patch('configure_github_app.getpass.getpass', side_effect=['Ivfixtureclient', 'fixture-secret-only']), \
+             patch('configure_github_app.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout='')) as run, \
+             redirect_stdout(io.StringIO()):
+            self.assertEqual(main(), 0)
+        self.assertEqual(run.call_count, 2)
+        first, second = run.call_args_list
+        self.assertEqual(first.args[0][1:4], ['deploy', '--env', 'appcheck'])
+        self.assertEqual(second.args[0][1:], ['secret', 'put', 'GITHUB_APP_CREDENTIALS', '--env', 'appcheck'])
+        self.assertNotIn('input', first.kwargs)
+        self.assertEqual(json.loads(second.kwargs['input'])['client_id'], 'Ivfixtureclient')
+
     def test_production_uploads_matching_code_then_one_pair_without_deploy_or_outputting_credentials(self):
         class Terminal(io.StringIO):
             def isatty(self):

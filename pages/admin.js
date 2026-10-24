@@ -2,6 +2,18 @@
 (function () {
   'use strict';
   const T = window.ContentTools;
+  const locale = CMS.getLocale('tr');
+  if (locale?.editor?.editorToolbar) CMS.registerLocale('tr', {...locale, editor:{...locale.editor,
+    editorToolbar:{...locale.editor.editorToolbar, publish:'Kaydet', publishNow:'Depoya kaydet',
+      published:'Depodaki kayıt', changesSaved:'Depoya kaydedildi'}}});
+  let mediaPublicFolder;
+  function previewAsset(src, getAsset) {
+    // Decap 3.17.1 treats root-relative URLs as external and skips its backend.
+    // Resolve managed media through the current backend/branch; keep stored URLs.
+    const prefix = mediaPublicFolder && mediaPublicFolder.replace(/\/$/, '') + '/';
+    const path = prefix && src.startsWith(prefix) ? src.slice(prefix.length) : src;
+    return getAsset ? String(getAsset(path)) : src;
+  }
   const previewFrameObserver = new MutationObserver(() => {
     for (const frame of document.querySelectorAll('#nc-root iframe')) {
       frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
@@ -19,10 +31,53 @@
   let dirty = false;
   let revision = 0;
   let savingRevision = -1;
+  let cmsConfig;
+  let saveReceipt;
+  let publicationTimer;
+  let publicationGeneration = 0;
+  let confirmedSave = false;
+  document.addEventListener('cms-entry-saved', event => { saveReceipt = event.detail; });
+  document.addEventListener('cms-entry-save-failed', () => {
+    document.getElementById('save-status').textContent = 'Kayıt başarısız';
+    status('GitHub kaydı tamamlanmadı. Açık taslak ve seçili görseller korunuyor; hatayı düzeltip tekrar kaydedin.');
+  });
+  function publicationStatus() {
+    const target = document.getElementById('publish-status');
+    const generation = ++publicationGeneration;
+    clearTimeout(publicationTimer);
+    if (cmsConfig?.backend.branch !== 'main') {
+      target.textContent = 'TEST PANELİ — ' + (cmsConfig?.backend.branch || 'test dalı') + '. Buradaki kayıtlar canlı siteye yayımlanmaz.';
+      document.getElementById('cms-environment').textContent = 'TEST PANELİ — canlı site değişmez';
+      return;
+    }
+    document.getElementById('cms-environment').textContent = 'ÜRETİM — main dalına kayıt';
+    target.textContent = 'Canlı yayın: henüz doğrulanmadı.';
+    if (!/^[a-f0-9]{40}$/.test(saveReceipt?.sha || '')) return;
+    const sha = saveReceipt.sha;
+    let attempts = 0;
+    const poll = async () => {
+      try {
+        const response = await fetch('/publication?sha=' + sha, {cache:'no-store'});
+        if (!response.ok) throw Error();
+        const result = await response.json();
+        if (generation !== publicationGeneration) return;
+        target.textContent = result.state === 'live' ? 'Canlıda yayımlandı · ' + sha.slice(0, 7)
+          : result.state === 'failed' ? 'Depoya kaydedildi; Actions yayını başarısız. Actions sonucunu kontrol edin.'
+          : 'Depoya kaydedildi; Actions / canlı dosya doğrulaması bekleniyor.';
+        if (['live','failed'].includes(result.state)) return;
+      } catch {
+        if (generation !== publicationGeneration) return;
+        target.textContent = 'Depoya kaydedildi; canlı yayın doğrulanamadı. Actions sonucunu kontrol edin.';
+      }
+      if (++attempts < 20) publicationTimer = setTimeout(poll, 15000);
+    };
+    poll();
+  }
   const originalIds = new Map();
   function changed() {
     dirty = true;
     revision++;
+    document.getElementById('save-status').textContent = 'Kaydedilmemiş değişiklikler';
     status('');
   }
   document.addEventListener('input', changed);
@@ -71,7 +126,7 @@
   function imagePreview(value, getAsset) {
     try {
       const d = T.validate('image', value);
-      const src = getAsset ? String(getAsset(d.src)) : d.src;
+      const src = previewAsset(d.src, getAsset);
       T.safeImage(src, true);
       return `<figure class="content-image align-${d.align} crop-${d.crop}" style="width:${d.width}${d.unit}"><img src="${escape(src)}" alt="${escape(d.alt)}">${d.caption ? '<figcaption>' + escape(d.caption) + '</figcaption>' : ''}</figure>`;
     } catch (error) { return '<p>' + escape(error.message) + '</p>'; }
@@ -117,44 +172,42 @@
     getInitialState() {
       this.lastValue = typeof this.props.value === 'string' ? this.props.value : '';
       this.handledMediaPaths = new Map();
-      return {blocks:T.parseDocument(this.lastValue), openGap:null, mobileTab:'edit', selectedKey:null, settingsOpen:false, previewOpen:false};
+      this.textInputs = new Map();
+      return {blocks:T.parseDocument(this.lastValue, {draft:true}), openGap:null, mobileTab:'edit', selectedKey:null, settingsOpen:false, previewOpen:false};
     },
-    isBlog() { return this.props.entry && this.props.entry.get('collection') === 'blog'; },
+    isPost() { return this.props.entry && ['blog', 'project'].includes(this.props.entry.get('collection')); },
     componentDidMount() {
-      if (this.isBlog()) {
-        document.body.classList.add('cms-blog-entry');
-        this.markBlogFields();
-        this.blogObserver = new MutationObserver(() => this.markBlogFields());
-        this.blogObserver.observe(document.getElementById('nc-root'), {childList:true, subtree:true});
+      if (this.isPost()) {
+        this.markPostFields();
+        this.postObserver = new MutationObserver(() => this.markPostFields());
+        this.postObserver.observe(document.getElementById('nc-root'), {childList:true, subtree:true});
       }
     },
     componentWillUnmount() {
-      if (this.blogObserver) this.blogObserver.disconnect();
-      if (this.isBlog()) document.body.classList.remove('cms-blog-entry', 'cms-blog-settings-open');
+      if (this.postObserver) this.postObserver.disconnect();
+      if (this.isPost()) document.body.classList.remove('cms-post-settings-open');
     },
-    markBlogFields() {
+    markPostFields() {
       for (const container of document.querySelectorAll('#nc-root [class*="ControlContainer"]')) {
         const label = (container.querySelector('label')?.innerText || '').trim().toLocaleUpperCase('tr');
-        const kind = label.startsWith('ANA BAŞLIK (TR)') ? 'title-tr'
+        const kind = (label.startsWith('ANA BAŞLIK (TR)') || label.startsWith('BAŞLIK (TR)')) ? 'title-tr'
           : label.startsWith('KISA AÇIKLAMA (TR)') ? 'summary-tr'
           : label.startsWith('DETAY İÇERİĞİ (TR)') ? 'body-tr'
           : label.startsWith('KAPAK GÖRSELİ') ? 'cover'
           : label.startsWith('KALICI BAĞLANTI') ? 'slug' : null;
-        if (kind) container.dataset.blogField = kind;
+        if (kind) container.dataset.postField = kind;
       }
     },
-    shouldComponentUpdate(nextProps, nextState) {
-      if (this.state !== nextState || nextProps.value !== this.props.value || nextProps.classNameWrapper !== this.props.classNameWrapper) return true;
-      const before = this.props.mediaPaths;
-      const after = nextProps.mediaPaths;
-      return this.state.blocks.some(block => block.type === 'image' &&
-        before && after && before.get('ordered-image-' + block.key) !== after.get('ordered-image-' + block.key));
+    shouldComponentUpdate() {
+      // Decap's Widget also calls this hook when asynchronous assets resolve.
+      // getAsset stays stable and Widget does not forward isLoadingAsset to us.
+      return true;
     },
     componentWillReceiveProps(nextProps) {
       const incoming = typeof nextProps.value === 'string' ? nextProps.value : '';
       if (incoming !== this.lastValue) {
         this.lastValue = incoming;
-        this.setState({blocks:T.parseDocument(incoming), openGap:null, mobileTab:'edit'});
+        this.setState({blocks:T.parseDocument(incoming, {draft:true}), openGap:null, mobileTab:'edit'});
       }
       // Decap stores a media-library result under the controlID supplied to
       // onOpenMediaLibrary. The raw built-in image control's own random ID is
@@ -199,6 +252,16 @@
       this.setState({openGap:null});
       this.commit(blocks);
     },
+    insertAtCaret(index, type) {
+      const block = this.state.blocks[index];
+      const position = this.textInputs.get(block.key)?.selectionStart ?? block.value.length;
+      const inserted = T.newBlock(type);
+      const after = {...T.newBlock('text'), value:block.value.slice(position)};
+      const blocks = this.state.blocks.slice();
+      blocks.splice(index, 1, {...block, value:block.value.slice(0, position)}, inserted, after);
+      this.setState({selectedKey:inserted.key});
+      this.commit(blocks);
+    },
     updateText(index, value) {
       const blocks = this.state.blocks.slice();
       blocks[index] = {...blocks[index], value};
@@ -225,47 +288,59 @@
     },
     renderGap(index) {
       const open = this.state.openGap === index;
-      const blog = this.isBlog();
-      return h('div', {className:'cms-block-gap' + (blog ? ' cms-blog-block-gap' : ''), key:'gap-' + index},
+      const blog = this.isPost();
+      return h('div', {className:'cms-block-gap' + (blog ? ' cms-post-block-gap' : ''), key:'gap-' + index},
         h('button', {type:'button', className:'cms-add-here', 'aria-label':'Buraya ekle', title:'Buraya blok ekle', onClick:() => this.setState({openGap:open ? null : index})}, blog ? '+' : '＋ Buraya ekle'),
         open ? h('div', {className:'cms-add-options', role:'group', 'aria-label':'Eklenecek blok türü'},
           ...['text','image','code'].map(type => h('button', {key:type, type:'button', onClick:() => this.insert(index, type)}, blockLabel(type)))) : null);
     },
     renderBlock(block, index) {
       const data = block.value || {};
-      const blog = this.isBlog();
+      const blog = this.isPost();
       const selected = this.state.selectedKey === block.key;
       let control;
       if (block.type === 'text') {
-        control = h('label', {className:'cms-block-field'}, h('span', {}, 'Metin (Markdown; HTML yazmanız gerekmez)'),
-          h('textarea', {value:block.value, rows:8, spellCheck:true, 'aria-label':'Metin bloğu', placeholder:'Başlık, paragraf, liste veya bağlantı…', onChange:event => this.updateText(index, event.target.value)}));
+        control = h('div', {},
+          h('label', {className:'cms-block-field'}, h('span', {}, 'Metin (Markdown; HTML yazmanız gerekmez)'),
+            h('textarea', {value:block.value, rows:8, spellCheck:true, 'aria-label':'Metin bloğu', placeholder:'Başlık, paragraf, liste veya bağlantı…',
+              ref:node => node ? this.textInputs.set(block.key, node) : this.textInputs.delete(block.key),
+              onChange:event => this.updateText(index, event.target.value)})),
+          h('div', {className:'cms-block-actions'},
+            h('button', {type:'button', onClick:event => { event.stopPropagation(); this.insertAtCaret(index, 'image'); }}, 'İmlece görsel ekle'),
+            h('button', {type:'button', onClick:event => { event.stopPropagation(); this.insertAtCaret(index, 'code'); }}, 'İmlece kod ekle')));
       } else if (block.type === 'image') {
+        const imageIndex = this.state.blocks.slice(0, index + 1).filter(item => item.type === 'image').length;
+        let validationError = '';
+        try { T.validate('image', data); } catch (error) { validationError = error.message; }
         const field = this.props.field.set('widget', 'image').set('label', 'Dosya seç / yükle').set('required', false);
         const src = typeof data.src === 'string' ? data.src : '';
         let preview = null;
-        try { if (src) preview = h('img', {src:T.safeImage(this.props.getAsset ? String(this.props.getAsset(src)) : src, true), alt:data.alt || ''}); }
+        try { if (src) preview = h('img', {src:T.safeImage(previewAsset(src, this.props.getAsset), true), alt:data.alt || ''}); }
         catch { preview = h('p', {role:'alert'}, 'Görsel adresi geçersiz.'); }
         const controlID = 'ordered-image-' + block.key;
         const imageSettings = h('div', {className:'cms-image-settings'},
-          h('label', {className:'cms-block-field'}, h('span', {}, 'Genişlik'), h('input', {type:'number', min:1, max:data.unit === '%' ? 100 : 4096, value:data.width ?? 100, onChange:event => this.updateData(index, {width:Number(event.target.value)})})),
-          h('label', {className:'cms-block-field'}, h('span', {}, 'Birim'), h('select', {value:data.unit || '%', onChange:event => this.updateData(index, {unit:event.target.value})}, h('option', {value:'%'}, '%'), h('option', {value:'px'}, 'px'))),
+          h('label', {className:'cms-block-field'}, h('span', {}, 'Genişlik'), h('input', {type:'number', min:1, max:data.unit === '%' ? 100 : 4096, step:1, value:data.width ?? '', 'aria-invalid':!Number.isInteger(data.width) || data.width < 1 || data.width > (data.unit === '%' ? 100 : 4096), onChange:event => this.updateData(index, {width:event.target.value === '' ? '' : Number(event.target.value)})})),
+          h('label', {className:'cms-block-field'}, h('span', {}, 'Birim'), h('select', {value:data.unit ?? '', onChange:event => this.updateData(index, {unit:event.target.value})}, h('option', {value:'', disabled:true}, 'Birim seçin'), h('option', {value:'%'}, '%'), h('option', {value:'px'}, 'px'))),
           h('label', {className:'cms-block-field'}, h('span', {}, 'Hizalama'), h('select', {value:data.align || 'center', onChange:event => this.updateData(index, {align:event.target.value})}, h('option', {value:'left'}, 'Sol'), h('option', {value:'center'}, 'Orta'), h('option', {value:'right'}, 'Sağ'))),
           h('label', {className:'cms-block-field'}, h('span', {}, 'Alt metin'), h('input', {type:'text', value:data.alt || '', onChange:event => this.updateData(index, {alt:event.target.value})})),
           h('label', {className:'cms-block-field cms-crop-setting'}, h('span', {}, 'Kırpma'), h('select', {value:data.crop || 'none', onChange:event => this.updateData(index, {crop:event.target.value})}, h('option', {value:'none'}, 'Oranı koru'), h('option', {value:'square'}, 'Kare'), h('option', {value:'wide'}, '16:9'))));
         control = h('div', {className:'cms-image-block'},
+          validationError ? h('p', {role:'alert'}, 'Görsel ' + imageIndex + ': ' + validationError) : null,
           h('button', {type:'button', className:'cms-native-image-control', onClick:() => this.props.onOpenMediaLibrary({
             controlID, forImage:true, field, value:src, allowMultiple:false,
             config:field.getIn(['options','media_library','config'])
           })}, src ? 'Görseli değiştir' : 'Bir resim seçin'),
-          preview ? h('div', {className:'cms-image-block-preview'}, preview) : null,
+          preview ? h('div', {className:'cms-image-block-preview', style:{width:validationError ? '100%' : data.width + data.unit,
+            alignSelf:data.align === 'left' ? 'flex-start' : data.align === 'right' ? 'flex-end' : 'center'}}, preview) : null,
           h('label', {className:'cms-block-field cms-image-caption'}, h('span', {}, 'Açıklama (isteğe bağlı)'), h('input', {type:'text', value:data.caption || '', onChange:event => this.updateData(index, {caption:event.target.value})})),
-          blog ? (src && selected ? h('details', {className:'cms-image-options', open:true}, h('summary', {}, 'Görsel ayarları'), imageSettings) : null) : imageSettings);
+          h('details', {className:'cms-image-options', open:selected || !!validationError}, h('summary', {}, 'Görsel ayarları'), imageSettings));
       } else {
         const codeSettings = h('div', {className:'cms-code-settings'},
           h('label', {className:'cms-block-field'}, h('span', {}, 'Dil'), h('select', {value:data.language || 'text', onChange:event => this.updateData(index, {language:event.target.value})}, ...T.languages.map(language => h('option', {key:language, value:language}, language)))),
           h('label', {className:'cms-block-field cms-wrap-option'}, h('input', {type:'checkbox', checked:!!data.wrap, onChange:event => this.updateData(index, {wrap:event.target.checked})}), h('span', {}, 'Uzun satırları sar')));
         control = h('div', {className:'cms-code-block'},
-          blog ? h('span', {className:'cms-code-language'}, data.language || 'text') : null,
+          h('div', {className:'code-toolbar'}, h('span', {className:'cms-code-language'}, data.language || 'text'),
+            h('button', {type:'button', onClick:event => T.copy(data.code || '', event.currentTarget)}, 'Kodu kopyala')),
           blog && selected ? h('details', {className:'cms-code-options', open:true}, h('summary', {}, 'Kod ayarları'), codeSettings) : null,
           !blog ? codeSettings : null,
           h('label', {className:'cms-block-field cms-code-field'}, h('span', {className:blog ? 'cms-visually-hidden' : ''}, 'Kod (girintiler korunur)'), h('textarea', {value:data.code || '', rows:10, spellCheck:false, className:'cms-code-input', 'aria-label':'Kod alanı', onChange:event => this.updateData(index, {code:event.target.value})})));
@@ -287,7 +362,7 @@
         control);
     },
     render() {
-      const blog = this.isBlog();
+      const blog = this.isPost();
       const fieldName = this.props.field.get('name');
       const primaryBlogField = blog && fieldName === 'fullDesc';
       const children = blog ? [] : [h('p', {className:'cms-block-help', key:'help'}, 'Blok sırası yayın sırasıdır. Medya sekmesi ayrı kütüphanedir; buradan seçtiğiniz görsel yalnızca bu bloğa eklenir.')];
@@ -295,19 +370,19 @@
       children.push(this.renderGap(this.state.blocks.length));
       const preview = h(BlockPreview, {...this.props, value:T.serializeDocument(this.state.blocks)});
       if (blog) {
-        return h('div', {className:'cms-block-editor cms-blog-content-editor' + (fieldName === 'fullDesc_tr' ? ' cms-blog-content-editor-tr' : '')},
-          primaryBlogField ? h('div', {className:'cms-blog-editor-toolbar'},
+        return h('div', {className:'cms-block-editor cms-post-content-editor' + (fieldName === 'fullDesc_tr' ? ' cms-post-content-editor-tr' : '')},
+          primaryBlogField ? h('div', {className:'cms-post-editor-toolbar'},
             h('strong', {}, 'Yazı içeriği'),
-            h('div', {className:'cms-blog-editor-toolbar-actions'},
+            h('div', {className:'cms-post-editor-toolbar-actions'},
               h('button', {type:'button', 'aria-expanded':this.state.settingsOpen, onClick:() => {
                 const open = !this.state.settingsOpen;
-                document.body.classList.toggle('cms-blog-settings-open', open);
+                document.body.classList.toggle('cms-post-settings-open', open);
                 this.setState({settingsOpen:open});
               }}, this.state.settingsOpen ? 'İçerik ayarlarını kapat' : 'İçerik ayarları'),
               h('button', {type:'button', 'aria-pressed':this.state.previewOpen, onClick:() => this.setState({previewOpen:!this.state.previewOpen})}, this.state.previewOpen ? 'Önizlemeyi kapat' : 'Önizleme'))) : null,
-          h('div', {className:'cms-blog-workspace', 'data-preview-open':this.state.previewOpen},
+          h('div', {className:'cms-post-workspace', 'data-preview-open':this.state.previewOpen},
             h('div', {className:'cms-block-editor-form'}, ...children),
-            this.state.previewOpen ? h('aside', {className:'cms-blog-preview-panel', 'aria-label':'Yazı önizlemesi'}, preview) : null));
+            this.state.previewOpen ? h('aside', {className:'cms-post-preview-panel', 'aria-label':'Yazı önizlemesi'}, preview) : null));
       }
       return h('div', {className:'cms-block-editor'},
         h('div', {className:'cms-mobile-tabs', role:'tablist'},
@@ -330,7 +405,7 @@
   function imagePreviewNode(value, getAsset, key) {
     try {
       const data = T.validate('image', value);
-      const src = getAsset ? String(getAsset(data.src)) : data.src;
+      const src = previewAsset(data.src, getAsset);
       T.safeImage(src, true);
       return h('figure', {className:'content-image align-' + data.align + ' crop-' + data.crop, style:{width:data.width + data.unit}, key},
         h('img', {src, alt:data.alt, loading:'lazy'}), data.caption ? h('figcaption', {}, data.caption) : null);
@@ -352,7 +427,6 @@
       this.enhance();
     },
     componentDidUpdate(previous) {
-      if (!previous.entry.get('data').equals(this.props.entry.get('data'))) changed();
       this.enhance();
     },
     enhance() { if (this.container) T.enhance(this.container); },
@@ -399,7 +473,7 @@
       }
       let cover = null;
       try {
-        if (data.get('imageUrl')) cover = h('img', {className:'detail-image', src:T.safeImage(String(this.props.getAsset(data.get('imageUrl'))), true), alt:title});
+        if (data.get('imageUrl')) cover = h('img', {className:'detail-image', src:T.safeImage(previewAsset(data.get('imageUrl'), this.props.getAsset), true), alt:title});
       } catch { /* Invalid cover is rejected on save, never injected in preview. */ }
       return h('div', {}, controls,
         h('article', {className:'cms-preview detail-content', style:{width:this.state.width}, ref:node => {this.container = node;}},
@@ -416,6 +490,10 @@
   function validateEntry(entry) {
     const data = entry.get('data').toJS();
     const path = entry.get('path');
+    if (entry.get('collection') === 'about_page' || path === 'content/about.json') {
+      if (data.profile?.image) T.safeImage(data.profile.image);
+      return entry.get('data');
+    }
     if (!data.slug) {
       const pathSlug = path && path.split('/').pop().replace(/\.json$/, '');
       const titleSlug = String(data.title || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
@@ -430,27 +508,44 @@
     }
     for (const key of ['fullDesc', 'fullDesc_tr']) {
       const source = data[key] || '';
-      for (const match of source.matchAll(/^```cms-(image|code)\n([^\n]+)\n```$/gm)) {
-        T.validate(match[1], JSON.parse(match[2]));
+      let imageIndex = 0;
+      for (const match of source.matchAll(/^```cms-(image|code)\r?\n([^\r\n]+)\r?\n```$/gm)) {
+        if (match[1] === 'image') imageIndex++;
+        const value = JSON.parse(match[2]);
+        try { T.validate(match[1], value); }
+        catch (error) {
+          if (match[1] !== 'image') throw error;
+          // Only validation fields/types; never credentials or full draft content.
+          console.warn('CMS görsel doğrulaması', {field:key, imageIndex,
+            width:value?.width, widthType:typeof value?.width,
+            unit:value?.unit, unitType:typeof value?.unit, srcPresent:!!value?.src});
+          throw Error((key === 'fullDesc' ? 'İçerik (EN)' : 'İçerik (TR)') + ' — Görsel ' + imageIndex + ': ' + error.message);
+        }
       }
     }
     if (data.imageUrl) T.safeImage(data.imageUrl);
       return entry.get('data').set('slug', data.slug);
   }
   CMS.registerEventListener({name:'preSave', handler:({entry}) => {
+    saveReceipt = null;
     try {
       const data = validateEntry(entry);
       savingRevision = revision;
+      document.getElementById('save-status').textContent = 'GitHub’a kaydediliyor…';
       status('GitHub’a kayıt deneniyor. Hata olursa yazdıklarınızı kapatmayın; yeniden deneyebilirsiniz.');
       return data;
     } catch (error) {
+      document.getElementById('save-status').textContent = 'Kayıt engellendi';
       status('Kayıt engellendi: ' + error.message + ' Yazdıklarınız korunuyor.');
       throw error;
     }
   }});
   const saved = () => {
+    confirmedSave = true;
     dirty = revision !== savingRevision;
+    document.getElementById('save-status').textContent = dirty ? 'Kaydedilmemiş değişiklikler' : 'Depoya kaydedildi · ' + (cmsConfig?.backend.branch || 'yapılandırılan dal');
     status('');
+    publicationStatus();
   };
   CMS.registerEventListener({name:'postSave', handler:saved});
   CMS.registerEventListener({name:'postPublish', handler:saved});
@@ -474,8 +569,8 @@
     const target = document.getElementById('save-status');
     const current = badge && badge.textContent.trim();
     if (current && target.getAttribute('aria-label') !== current) {
-      const compact = /kaydedilmemiş/i.test(current) ? 'Kaydedilmemiş' : /kaydedildi/i.test(current) ? 'Kaydedildi' : current;
-      target.textContent = compact;
+      if (/kaydedilmemiş/i.test(current)) target.textContent = 'Kaydedilmemiş değişiklikler';
+      else if (!confirmedSave && !dirty) target.textContent = 'Depodaki kayıt açıldı';
       target.setAttribute('aria-label', current);
     }
   };
@@ -508,7 +603,7 @@
     if (site.textContent !== siteLabel) site.textContent = siteLabel;
     const secondary = [...main.querySelectorAll('button,a,[role="button"]')].filter(control => {
       const label = (control.innerText || control.getAttribute('aria-label') || control.title || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').toLocaleLowerCase();
-      return label !== 'yayinla';
+      return !['yayinla', 'kaydet'].includes(label);
     });
     for (const control of secondary) control.dataset.mobileSecondary = 'true';
     const signature = secondary.map(control => (control.innerText || control.getAttribute('aria-label') || control.title || '').trim()).join('|');
@@ -615,6 +710,10 @@
   // Native Decap supplies delete confirmation, route-leave warning and keeps
   // the Redux draft on persist failure. Do not replace or auto-submit those flows.
   fetch('config.yml').then(r => { if (!r.ok) throw Error(); return r.json(); }).then(config => {
+    cmsConfig = config;
+    publicationStatus();
+    if (config.backend.name === 'github-app' && typeof config.public_folder === 'string' &&
+        config.public_folder.startsWith('/') && !config.public_folder.startsWith('//')) mediaPublicFolder = config.public_folder;
     if (config.backend.name === 'github-app') GitHubAppSession.register(CMS, config.backend.base_url, document);
     document.getElementById('actions-link').href = 'https://github.com/' + config.backend.repo + '/actions/workflows/pages.yml';
     // This file already fetched the complete config; prevent Decap from loading

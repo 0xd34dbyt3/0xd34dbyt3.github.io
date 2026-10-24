@@ -10,6 +10,9 @@ binding = "ASSETS"
 run_worker_first = true
 
 [vars]
+GITHUB_AUTH_MODE = "github_app"
+CMS_BRANCH = "main"
+ADMIN_CSP_PROFILE = "decap-3.17.1-production"
 CMS_ORIGIN = "https://portfolio-admin-auth.muhammedfatihozturk02.workers.dev"
 OAUTH_ORIGIN = "https://portfolio-admin-auth.muhammedfatihozturk02.workers.dev"
 PAGES_ORIGIN = "https://0xd34dbyt3.github.io"
@@ -33,6 +36,7 @@ workers_dev = true
 preview_urls = false
 
 [env.appcheck.vars]
+ADMIN_CSP_PROFILE = "decap-3.17.1-appcheck"
 GITHUB_AUTH_MODE = "github_app"
 CMS_ORIGIN = "https://portfolio-admin-auth-app-check.muhammedfatihozturk02.workers.dev"
 OAUTH_ORIGIN = "https://portfolio-admin-auth-app-check.muhammedfatihozturk02.workers.dev"

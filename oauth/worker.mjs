@@ -1,8 +1,23 @@
 const COOKIE = '__Host-decap_state';
 const STATE_TTL = 5 * 60 * 1000;
 const MAX_PENDING = 1000;
-const ADMIN_ASSETS = new Set(['/admin/', '/admin/index.html', '/admin/admin.js', '/admin/github-app-session.js', '/admin/config.yml', '/js/content-tools.js']);
+const ADMIN_ASSETS = new Set(['/admin/', '/admin/index.html', '/admin/admin.js', '/admin/github-app-session.js', '/admin/config.yml', '/js/content-tools.js', '/styles.css', '/content.css']);
 export const ADMIN_CSP = "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net 'sha256-Hx47mYK7okpadKVYneZvwqwuJSl8ZUaC0EMxEJ/t+8c='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https://api.github.com https://github.com https://raw.githubusercontent.com; frame-src https://0xd34dbyt3.github.io";
+// Decap 3.17.1 compiles its config schema with AJV's Function constructor.
+// Keep the exception opt-in AND bound to each explicit admin origin/document.
+// script-src-elem preserves the existing source/hash list; attributes stay blocked.
+function adminCsp(pathname, cfg) {
+  const allowed = (cfg.ADMIN_CSP_PROFILE === 'decap-3.17.1-appcheck' &&
+      cfg.CMS_ORIGIN === 'https://portfolio-admin-auth-app-check.muhammedfatihozturk02.workers.dev') ||
+    (cfg.ADMIN_CSP_PROFILE === 'decap-3.17.1-production' &&
+      cfg.CMS_ORIGIN === 'https://portfolio-admin-auth.muhammedfatihozturk02.workers.dev');
+  if (!allowed ||
+      !['/admin/', '/admin/index.html'].includes(pathname)) return ADMIN_CSP;
+  return ADMIN_CSP.replace(/script-src ([^;]+);/,
+    "script-src 'unsafe-eval'; script-src-elem $1; script-src-attr 'none';")
+    // Native Decap reads File object URLs for upload AND local draft backup.
+    .replace("connect-src 'self' ", "connect-src 'self' blob: ");
+}
 
 export function config(env) {
   let credentials = {};
@@ -103,13 +118,16 @@ export default {
         headers.set('X-Frame-Options', 'DENY');
         headers.set('Strict-Transport-Security', 'max-age=31536000');
         headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-        headers.set('Content-Security-Policy', ADMIN_CSP);
+        headers.set('Content-Security-Policy', adminCsp(url.pathname, cfg));
         headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
         headers.set('Cross-Origin-Resource-Policy', 'same-origin');
         if (url.pathname === '/admin/config.yml' && request.method === 'GET' && cfg.GITHUB_AUTH_MODE === 'github_app' && asset.ok) {
           const cms = await asset.json();
-          cms.backend = {...cms.backend, name: 'github-app', base_url: cfg.CMS_ORIGIN, auth_scope: 'offline_access',
+          cms.backend = {...cms.backend, name: 'github-app', base_url: cfg.CMS_ORIGIN,
             branch: cfg.CMS_BRANCH || cms.backend.branch};
+          // Decap 3.17.1's config schema only accepts repo/public_repo. The
+          // adapter supplies the App scope to the login component after validation.
+          delete cms.backend.auth_scope;
           headers.delete('Content-Length');
           headers.delete('ETag');
           return new Response(JSON.stringify(cms), {status: 200, headers});
@@ -118,6 +136,26 @@ export default {
       }
       if (request.method !== 'GET') return fail(405, 'Method not allowed');
       if (request.url.length > 4096) return fail(414, 'Request URI too long');
+
+      if (url.pathname === '/publication') {
+        if ((cfg.CMS_BRANCH || 'main') !== 'main') return Response.json({state:'test', branch:cfg.CMS_BRANCH}, {headers:{'Cache-Control':'no-store'}});
+        const sha = url.searchParams.get('sha') || '';
+        if (!/^[a-f0-9]{40}$/.test(sha)) return fail(400, 'Invalid commit');
+        const options = {headers:{Accept:'application/vnd.github+json', 'User-Agent':'portfolio-admin-publication'},
+          cf:{cacheTtl:30, cacheEverything:true}};
+        const runs = await fetch(`https://api.github.com/repos/${cfg.GITHUB_REPOSITORY}/actions/workflows/pages.yml/runs?branch=main&event=push&per_page=20`, options);
+        if (!runs.ok) return fail(502, 'Publication status unavailable');
+        const run = (await runs.json()).workflow_runs?.find(item => item.head_sha === sha && item.head_branch === 'main' && item.event === 'push');
+        let state = 'pending';
+        if (run?.status === 'completed') {
+          if (run.conclusion !== 'success') state = 'failed';
+          else {
+            const live = await fetch(cfg.PAGES_ORIGIN + '/build-report.json', {redirect:'error', cache:'no-store'});
+            if (live.ok && (await live.json()).sourceCommit === sha) state = 'live';
+          }
+        }
+        return response(JSON.stringify({state, sha}), 200, {'Content-Type':'application/json; charset=utf-8'});
+      }
 
       if (url.pathname === '/auth') {
         if (url.searchParams.get('provider') !== 'github' || url.searchParams.get('site_id') !== new URL(cfg.CMS_ORIGIN).hostname) return fail(400, 'Invalid OAuth request');

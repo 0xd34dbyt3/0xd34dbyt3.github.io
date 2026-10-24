@@ -44,8 +44,13 @@
     });
   }
 
-  function backendClass(NativeGitHub, {authorize, onExpired, now = Date.now}) {
+  function backendClass(NativeGitHub, {authorize, onExpired, onSaved, onSaveError, now = Date.now, createElement}) {
     return class GitHubApp extends NativeGitHub {
+      authComponent() {
+        const NativeAuth = super.authComponent();
+        return props => createElement(NativeAuth, {...props, config: {...props.config,
+          backend: {...props.config.backend, auth_scope: 'offline_access'}}});
+      }
       async authenticate(credentials) {
         if (!/^ghu_[A-Za-z0-9]+$/.test(credentials.token || '') ||
             !Number.isFinite(credentials.expires_at) || credentials.expires_at <= now()) {
@@ -80,7 +85,13 @@
           throw error;
         }
       }
-      persistEntry(entry, options) { return this.sessionOperation(() => super.persistEntry(entry, options)); }
+      async persistEntry(entry, options) {
+        try {
+          const result = await this.sessionOperation(() => super.persistEntry(entry, options));
+          onSaved?.({sha:result?.object?.sha || result?.sha || null});
+          return result;
+        } catch (error) { onSaveError?.(); throw error; }
+      }
       persistMedia(file, options) { return this.sessionOperation(() => super.persistMedia(file, options)); }
     };
   }
@@ -108,7 +119,9 @@
       document.getElementById('cms-status').appendChild(button);
     };
     CMS.registerBackend('github-app', backendClass(native, {
-      authorize: () => popupAuthorization(origin), onExpired
+      authorize: () => popupAuthorization(origin), onExpired, createElement: window.h,
+      onSaved: detail => document.dispatchEvent(new CustomEvent('cms-entry-saved', {detail})),
+      onSaveError: () => document.dispatchEvent(new CustomEvent('cms-entry-save-failed'))
     }));
   }
   return {backendClass, popupAuthorization, register};

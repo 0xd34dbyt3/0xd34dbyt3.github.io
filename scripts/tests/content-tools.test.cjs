@@ -31,7 +31,39 @@ test('an empty image draft remains editable until preSave validation', () => {
   assert.equal(image.type, 'image');
   assert.equal(image.value.src, '');
   assert.equal(image.value.width, 64);
-  assert.throws(() => T.validate('image', image.value), /Görsel genişliği/);
+  assert.throws(() => T.validate('image', image.value), /görsel seçin/);
+});
+test('image width limits and value types stay strict across serialization', () => {
+  for (const [unit, widths] of [['%', [1, 100]], ['px', [1, 4096]]]) {
+    for (const width of widths) {
+      const source = T.serialize('image', {src:'/media/a.png', width, unit});
+      const [block] = T.parseDocument(source);
+      assert.equal(block.value.width, width);
+      assert.equal(block.value.unit, unit);
+      assert.doesNotThrow(() => T.validate('image', JSON.parse(source.split('\n')[1])));
+    }
+  }
+  for (const unit of ['%', 'px']) {
+    for (const width of [0, -1, unit === '%' ? 101 : 4097, 1.5, '100', '', null, false, NaN, Infinity]) {
+      assert.throws(() => T.validate('image', {src:'/media/a.png', width, unit}), /Görsel genişliği/);
+    }
+  }
+  assert.throws(() => T.validate('image', {src:'/media/a.png',width:100,unit:''}), /birim/);
+  assert.throws(() => T.validate('image', {src:'',width:100,unit:'%'}), /görsel seçin/);
+  assert.equal(T.validate('image', {src:'/media/a.png'}).width, 100);
+});
+test('invalid image settings remain typed and repairable only in editor drafts', () => {
+  for (const value of [{src:'/media/a.png',width:'100',unit:'%'},
+    {src:'/media/a.png',width:'',unit:'%'}, {src:'/media/a.png',width:100,unit:''},
+    {src:'/media/a.png',width:101,unit:'%'}]) {
+    const source = T.serializeDraft('image', value);
+    const [block] = T.parseDocument(source, {draft:true});
+    assert.equal(block.type, 'image');
+    assert.deepEqual(block.value, value);
+    assert.equal(T.serializeDocument([block]), source);
+    assert.throws(() => T.validate('image', block.value));
+    assert.equal(T.parseDocument(source)[0].type, 'text');
+  }
 });
 test('ordered text, image and code blocks remain ordered across insertion and movement', () => {
   const image = {src:'/media/a.png', alt:'A', caption:'', width:37, unit:'%', align:'right', crop:'none'};
