@@ -1,13 +1,13 @@
 {
-  "id": "1",
-  "slug": "paranoid_osint_tool",
-  "title": "Paranoid_Osint_Tool",
-  "title_tr": "",
-  "shortDesc": "A comprehensive OSINT tool for gathering intelligence from public sources.",
-  "shortDesc_tr": "",
   "fullDesc": "# Paranoid OSINT Tool\n\nA powerful command-line interface tool designed for security researchers to automate open-source intelligence gathering.\n\n## Features\n- Subdomain enumeration\n- Email harvesting\n- Port scanning integration\n\n```bash\npython Paranoid.py -t example.com\n```",
-  "fullDesc_tr": "",
+  "title_tr": "",
+  "slug": "paranoid_osint_tool",
+  "shortDesc": "A comprehensive OSINT tool for gathering intelligence from public sources.",
+  "updatedAt": "",
+  "shortDesc_tr": "",
   "imageUrl": "",
+  "title": "Paranoid_Osint_Tool",
+  "id": "1",
   "createdAt": "",
-  "updatedAt": ""
+  "fullDesc_tr": "```cms-image\n{\"src\":\"/media/image-f982ac6b-972c-4ed5-867c-100f93247098.png\",\"alt\":\"\",\"caption\":\"\",\"width\":100,\"unit\":\"%\",\"align\":\"center\",\"crop\":\"none\"}\n```"
 }
