@@ -150,7 +150,7 @@ export default {
         if (run?.status === 'completed') {
           if (run.conclusion !== 'success') state = 'failed';
           else {
-            const live = await fetch(cfg.PAGES_ORIGIN + '/build-report.json', {redirect:'error', cache:'no-store'});
+            const live = await fetch(cfg.PAGES_ORIGIN + '/build-report.json', {redirect:'manual', cache:'no-store'});
             if (live.ok && (await live.json()).sourceCommit === sha) state = 'live';
           }
         }

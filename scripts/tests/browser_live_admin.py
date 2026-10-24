@@ -88,6 +88,10 @@ def run(args):
                                       'inline_errors':page.get_by_role('alert').all_text_contents(),
                                       'confirmed_ref_updates':updates},ensure_ascii=False),flush=True)
                 raise
+            # Response body callbacks can finish just after the UI's postSave.
+            for _ in range(20):
+                if len(updates)>before:break
+                page.wait_for_timeout(100)
             assert len(updates)>before,'No real GitHub ref update observed'
             assert updates[-1]['branch']==branch,'Unexpected write branch'
             assert page.evaluate('acceptanceReceipts.at(-1)')==updates[-1]['sha'],'Publication receipt must identify the exact confirmed commit'

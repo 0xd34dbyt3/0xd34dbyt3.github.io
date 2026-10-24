@@ -9,10 +9,11 @@ test('publication requires exact main push, successful Actions and matching live
   let run = {head_sha:sha, head_branch:'main', event:'push', status:'completed', conclusion:'success'};
   let liveSha = sha;
   const calls = [];
-  t.mock.method(globalThis, 'fetch', async url => {
+  t.mock.method(globalThis, 'fetch', async (url,options) => {
     calls.push(url);
     if (url.startsWith('https://api.github.com/')) return Response.json({workflow_runs:[run]});
     assert.equal(url,'https://pages.example/build-report.json');
+    assert.equal(options.redirect,'manual'); // Workers rejects redirect:'error'.
     return Response.json({sourceCommit:liveSha});
   });
   const call = async (cfg=env, query=sha) => worker.fetch(new Request('https://admin.example/publication?sha='+query),cfg);
