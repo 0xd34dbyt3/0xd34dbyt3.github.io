@@ -1,7 +1,7 @@
 {
   "whoami": {
-    "en": "I approach cybersecurity not from a defensive starting point, but from the attacker's perspective. I am a Red Team and AI Security–focused researcher who prioritizes understanding how systems break before deciding how to protect them. Real security only exists when systems are tested with an adversarial mindset.\n\nMy work focuses on AI Red Teaming, reverse engineering, malware development, attack techniques, and threat simulation. I analyze assumptions, expose blind spots, and challenge false senses of security. [admin kabul]",
-    "tr": " [admin kabul]"
+    "en": "I approach cybersecurity not from a defensive starting point, but from the attacker's perspective. I am a Red Team and AI Security–focused researcher who prioritizes understanding how systems break before deciding how to protect them. Real security only exists when systems are tested with an adversarial mindset.\n\nMy work focuses on AI Red Teaming, reverse engineering, malware development, attack techniques, and threat simulation. I analyze assumptions, expose blind spots, and challenge false senses of security.",
+    "tr": ""
   },
   "profile": {
     "name": "Muhammed Fatih Öztürk",
