@@ -1,5 +1,5 @@
 {
-  "fullDesc": "# AI Red Teaming\n\nLarge Language Models are vulnerable to prompt injection and adversarial attacks. We discuss jailbreak methodologies and safety boundary testing. wooww\n",
+  "fullDesc": "```cms-image\n{\"src\":\"/media/image-f982ac6b-972c-4ed5-867c-100f93247098.png\",\"alt\":\"\",\"caption\":\"\",\"width\":100,\"unit\":\"%\",\"align\":\"center\",\"crop\":\"none\"}\n```\n\n\n\n# AI Red Teaming\n\nLarge Language Models are vulnerable to prompt injection and adversarial attacks. We discuss jailbreak methodologies and safety boundary testing. wooww\n",
   "title_tr": "",
   "slug": "ai_red_teaming",
   "shortDesc": "Methodologies for testing LLMs against jailbreak attacks and prompt injections.",
