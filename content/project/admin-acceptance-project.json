@@ -3,6 +3,6 @@
   "shortDesc": "ADMIN_ACCEPTANCE_FIXTURE — kullanıcı içeriği değildir.",
   "title_tr": "Admin doğrulama örneği — project",
   "shortDesc_tr": "ADMIN_ACCEPTANCE_FIXTURE — kullanıcı içeriği değildir.",
-  "fullDesc": "Admin kabul metni project.\n```cms-image\n{\"src\":\"/media/image-3c216e98-1f42-4228-a28a-c20c9c5b8e6b.png\",\"alt\":\"\",\"caption\":\"\",\"width\":58,\"unit\":\"%\",\"align\":\"right\",\"crop\":\"none\"}\n```\n\n\n\nGörselden sonraki metin korunur.\n\n```cms-code\n{\"code\":\"  const acceptance = \\\"project\\\";\\n\",\"language\":\"javascript\",\"wrap\":false}\n```",
+  "fullDesc": "Admin kabul metni project.\n```cms-image\n{\"src\":\"/media/image-f982ac6b-972c-4ed5-867c-100f93247098.png\",\"alt\":\"\",\"caption\":\"\",\"width\":58,\"unit\":\"%\",\"align\":\"right\",\"crop\":\"none\"}\n```\n\n\n\nGörselden sonraki metin korunur.\n\n```cms-code\n{\"code\":\"  const acceptance = \\\"project\\\";\\n\",\"language\":\"javascript\",\"wrap\":false}\n```",
   "slug": "admin-acceptance-project"
 }
