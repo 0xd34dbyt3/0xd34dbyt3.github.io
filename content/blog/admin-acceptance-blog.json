@@ -1,0 +1,8 @@
+{
+  "title": "admin-acceptance-blog",
+  "shortDesc": "ADMIN_ACCEPTANCE_FIXTURE — kullanıcı içeriği değildir.",
+  "title_tr": "Admin doğrulama örneği — blog",
+  "shortDesc_tr": "ADMIN_ACCEPTANCE_FIXTURE — kullanıcı içeriği değildir.",
+  "fullDesc": "Admin kabul metni blog.\n```cms-image\n{\"src\":\"/media/image-3c27fbe3-f07e-4d93-b636-9cca2273d622.png\",\"alt\":\"\",\"caption\":\"\",\"width\":58,\"unit\":\"%\",\"align\":\"right\",\"crop\":\"none\"}\n```\n\n\n\nGörselden sonraki metin korunur.\n\n```cms-code\n{\"code\":\"  const acceptance = \\\"blog\\\";\\n\",\"language\":\"javascript\",\"wrap\":false}\n```",
+  "slug": "admin-acceptance-blog"
+}
