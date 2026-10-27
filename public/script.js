@@ -153,7 +153,7 @@ whoami   - Display current session profile`,
         email: () => 'Contact Email: muhammedfatihozturk01@gmail.com',
 
         social: () => `OFFICIAL PROFILES:
-- GitHub:   https://github.com/ParanoidNull
+- GitHub:   https://github.com/0xd34dbyt3
 - LinkedIn: https://linkedin.com/in/muhammedfatihöztürk`,
 
         projects: () => {
