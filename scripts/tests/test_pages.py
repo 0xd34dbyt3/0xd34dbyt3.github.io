@@ -153,6 +153,41 @@ class PagesTests(unittest.TestCase):
         self.assertEqual(final['posts']['project'], 0)
         self.assertFalse((self.root / 'deleted/project/synthetic-project/index.html').exists())
 
+    def test_terminal_projects_match_published_cards_after_each_build(self):
+        project = dict(self.post, id='43', slug='synthetic-project',
+                       title='</script><img src=x onerror=alert(1)> & Proje', title_tr='Başka dil')
+        older = dict(project, id='44', slug='older-project', title='Older project', createdAt='2025-01-01')
+        fixture = dict(project, id='45', slug='admin-acceptance-project',
+                       shortDesc='ADMIN_ACCEPTANCE_FIXTURE — kullanıcı içeriği değildir.')
+        self.write('project/older-project.json', older)
+        self.write('project/admin-acceptance-project.json', fixture)
+        # Unpublished draft files are outside the published collection.
+        (self.content / 'project/drafts').mkdir()
+        self.write('project/drafts/draft.json', dict(project, slug='draft'))
+        for base in ('/', '/repo/'):
+            for stage in ('added', 'edited', 'deleted'):
+                if stage == 'deleted':
+                    (self.content / 'project/synthetic-project.json').unlink()
+                    (self.content / 'project/older-project.json').unlink()
+                else:
+                    self.write('project/older-project.json', older)
+                    self.write('project/synthetic-project.json', dict(project, title=project['title'] if stage == 'added' else 'Edited project'))
+                output = self.root / (base.strip('/') or 'root') / stage
+                build(output, self.content, dict(self.site, basePath=base), release=True)
+                home = BeautifulSoup((output / 'index.html').read_text(), 'html.parser')
+                listing = BeautifulSoup((output / 'projects.html').read_text(), 'html.parser')
+                data = json.loads(home.select_one('#terminal-projects').string)
+                cards = listing.select('#projectsContainer a.project-card')
+                self.assertEqual(data, [dict(title=c.select_one('.box-text').text, url=c['href']) for c in cards])
+                expected = [] if stage == 'deleted' else [
+                    dict(title=project['title'] if stage == 'added' else 'Edited project', url=base + 'project/synthetic-project/'),
+                    dict(title=older['title'], url=base + 'project/older-project/')]
+                self.assertEqual(data, expected)
+                self.assertFalse(home.select('#terminal-projects img'))
+                self.assertNotIn('</script>', home.select_one('#terminal-projects').string)
+                self.assertFalse((output / 'project/admin-acceptance-project').exists())
+                self.assertFalse((output / 'project/draft').exists())
+
     def test_feed_cache_is_dated_not_live_and_rejects_private_fields(self):
         cache = dict(news=dict(items=[dict(title='Synthetic news', url='https://example.org/news', source='Test', date='2026-01-01')], updatedAt='2026-01-01T00:00:00Z', status='snapshot'))
         self.write('feeds.json', cache)

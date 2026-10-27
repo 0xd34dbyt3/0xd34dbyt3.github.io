@@ -247,6 +247,9 @@ def load_posts(content):
             for key, value in post.items():
                 if value is not None and not isinstance(value, str):
                     raise ValueError("Post fields must be strings: " + path.name)
+            # Browser acceptance records are explicitly marked as non-user content.
+            if post["shortDesc"].startswith("ADMIN_ACCEPTANCE_FIXTURE —"):
+                continue
             identity = (kind, post["slug"])
             if identity in slugs:
                 raise ValueError("Duplicate slug")
@@ -455,6 +458,12 @@ def build(output, content=ROOT / "content", site=None, refresh=False, release=Fa
     for page in PAGES:
         soup = template(page, base)
         if page == "index.html":
+            node = soup.new_tag("script", type="application/json", id="terminal-projects")
+            node.string = json.dumps([
+                dict(title=p["title"], url=base + 'project/' + p["slug"] + '/')
+                for p in posts if p["type"] == "project"
+            ], ensure_ascii=False).replace("<", "\\u003c")
+            soup.body.append(node)
             feeds = get_feeds(content, refresh)
             render_feeds(soup, feeds)
             dump(output / "data/feeds.json", feeds)

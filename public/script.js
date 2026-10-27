@@ -156,10 +156,27 @@ whoami   - Display current session profile`,
 - GitHub:   https://github.com/ParanoidNull
 - LinkedIn: https://linkedin.com/in/muhammedfatihöztürk`,
 
-        projects: () => `VERIFIED MODULES:
-- Anti-Virus Evasion Toolkit [C/C++]
-- Defensive SIEM Alerting Pipeline [Python/ELK]
-- Web Hardening Framework [.htaccess/Nginx]`,
+        projects: () => {
+            const source = document.getElementById('terminal-projects');
+            const projects = source ? JSON.parse(source.textContent) : [];
+            if (!projects.length) return 'No published projects are available.';
+
+            addTerminalLine('VERIFIED MODULES:');
+            projects.forEach(project => {
+                const row = document.createElement('div');
+                row.className = 'terminal-line';
+                const text = document.createElement('span');
+                text.className = 'terminal-text';
+                const link = document.createElement('a');
+                link.href = project.url;
+                link.textContent = project.title;
+                text.append('- ', link);
+                row.appendChild(text);
+                terminalOutput.appendChild(row);
+            });
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            return null;
+        },
 
         clear: () => {
             // OWASP A03 Mitigation: Replace innerHTML with replaceChildren
